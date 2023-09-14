@@ -59,7 +59,6 @@ pub enum Commands {
 
 #[derive(Debug, Args)]
 pub struct RepoArgs {
-
     #[command(subcommand)]
     pub command: RepoCommands,
 }

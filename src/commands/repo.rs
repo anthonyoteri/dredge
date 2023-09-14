@@ -15,7 +15,6 @@ pub async fn handler(config: &Config, args: &RepoArgs) -> Result<(), ApiError> {
     Ok(())
 }
 
-
 #[derive(Deserialize)]
 struct CatalogResponse {
     repositories: Vec<String>,
@@ -37,9 +36,13 @@ async fn handle_list(config: &Config, _args: &RepoArgs) -> Result<(), ApiError> 
 
         if let Some(link_value) = headers.get(http::header::LINK) {
             let link_str = link_value.to_str()?;
-            let parts:Vec<&str> = link_str.split(';').collect();
+            let parts: Vec<&str> = link_str.split(';').collect();
             if let Some(url_part) = parts.first() {
-                if let Some(uri) = url_part.trim().strip_prefix('<').and_then(|s| s.strip_suffix('>')) {
+                if let Some(uri) = url_part
+                    .trim()
+                    .strip_prefix('<')
+                    .and_then(|s| s.strip_suffix('>'))
+                {
                     url = config.registry_url.join(uri)?;
                 }
             }
@@ -48,12 +51,14 @@ async fn handle_list(config: &Config, _args: &RepoArgs) -> Result<(), ApiError> 
         }
     }
 
-    let repo_list: Vec<&str> = responses.iter().flat_map(|r| r.repositories.iter().map(String::as_str)).collect();
-    
+    let repo_list: Vec<&str> = responses
+        .iter()
+        .flat_map(|r| r.repositories.iter().map(String::as_str))
+        .collect();
+
     for repo in repo_list {
         println!("{repo}");
     }
 
     Ok(())
-
 }

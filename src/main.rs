@@ -1,11 +1,11 @@
 use crate::cli::Cli;
+use crate::cli::Commands;
 use crate::config::Config;
 use crate::error::ConfigError;
 use crate::error::DredgeError;
 use clap::Parser;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use crate::cli::Commands;
 
 pub(crate) mod cli;
 mod commands;

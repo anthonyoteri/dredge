@@ -50,7 +50,6 @@ impl From<xdg::BaseDirectoriesError> for ConfigError {
 /// An error related to the communication with the registry API.
 #[derive(Error, Debug)]
 pub enum ApiError {
-
     /// Error parsing a URL
     #[error(transparent)]
     UrlParseError(#[from] url::ParseError),
@@ -64,7 +63,6 @@ pub enum ApiError {
 }
 
 impl From<reqwest::header::ToStrError> for ApiError {
-
     fn from(other: reqwest::header::ToStrError) -> Self {
         Self::ResponseHeaderParseError(Box::from(other))
     }
