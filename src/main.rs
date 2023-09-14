@@ -87,6 +87,7 @@ async fn main() -> Result<(), DredgeError> {
 
     match args.command {
         Commands::Catalog => commands::catalog::handler(&config).await?,
+        Commands::Check => commands::version::handler(&config).await?,
     }
 
     Ok(())

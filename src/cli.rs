@@ -7,13 +7,16 @@ use clap::ValueEnum;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+/// Dredge is a command line tool for working with the Docker Registry
+/// V2 API.
 #[derive(Debug, Parser)]
 #[command(name = "dredge", version, author)]
-#[command(about =  "A Docker Registry CLI tool", long_about = None)]
+#[command(about, long_about)]
 pub(crate) struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
+    /// Optional configuration file override.
     #[arg(short = 'c', long = "config")]
     pub config: Option<OsString>,
 
@@ -54,5 +57,10 @@ impl From<LogLevel> for log::LevelFilter {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    /// Fetch the list of available repositories from the catalog.
     Catalog,
+
+    /// Perform a simple API Version check towards the configured registry
+    /// endpoint.
+    Check,
 }

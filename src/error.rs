@@ -60,6 +60,18 @@ pub enum ApiError {
 
     #[error("Failed to parse response headers")]
     ResponseHeaderParseError(Box<dyn std::error::Error>),
+
+    #[error("Version Mismatch {0}")]
+    UnsupportedVersion(String),
+
+    #[error("Unexpected response from API: {0}")]
+    UnexpectedResponse(String),
+
+    #[error("HTTP Authorization failed")]
+    AuthorizationFailed,
+
+    #[error("Resource not found")]
+    NotFound,
 }
 
 impl From<reqwest::header::ToStrError> for ApiError {
