@@ -74,7 +74,7 @@ async fn main() -> Result<(), DredgeError> {
     let args = Cli::parse();
 
     // -- Initialize logging
-    let log_level = args.log_level.clone();
+    let log_level = args.log_level;
     femme::with_level(log::LevelFilter::from(log_level));
 
     // -- Load and parse configuration file
