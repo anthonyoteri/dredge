@@ -54,16 +54,5 @@ impl From<LogLevel> for log::LevelFilter {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    Repo(RepoArgs),
-}
-
-#[derive(Debug, Args)]
-pub struct RepoArgs {
-    #[command(subcommand)]
-    pub command: RepoCommands,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum RepoCommands {
-    List,
+    Catalog,
 }

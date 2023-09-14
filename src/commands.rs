@@ -1,1 +1,1 @@
-pub mod repo;
+pub mod catalog;

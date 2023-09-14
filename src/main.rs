@@ -86,7 +86,7 @@ async fn main() -> Result<(), DredgeError> {
     let config = Config::try_from(config_file.as_ref())?;
 
     match args.command {
-        Commands::Repo(repo_args) => commands::repo::handler(&config, &repo_args).await?,
+        Commands::Catalog => commands::catalog::handler(&config).await?,
     }
 
     Ok(())

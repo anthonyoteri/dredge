@@ -1,35 +1,16 @@
-//! Command module responsible for handling the "repo" command.
+//! Command module responsible for handling the "catalog" command.
 //!
-//! The "repo" command works with the Docker Registry API's "repository"
+//! The "catalog" command works with the Docker Registry API's "catalog"
 //! entitity available at /v2/_catalog.
 //!
-use crate::cli::{RepoArgs, RepoCommands};
 use crate::config::Config;
 use crate::error::ApiError;
 use serde::Deserialize;
 
-/// Path to the Docker Registry API's "repository" entity.
-const BASE_CATALOG_URI: &str = "/v2/_catalog?n=1000";
+/// Path to the Docker Registry API's "catalog" entity.
+const BASE_CATALOG_URI: &str = "/v2/_catalog";
 
-/// Main handler function for the "repo" command.
-///
-/// Responsible for dispatching the various subcommands.
-///
-/// # Errors:
-///
-/// Returns an `ApiError` if there is a problem handling the requested
-/// subcommand.
-pub async fn handler(config: &Config, args: &RepoArgs) -> Result<(), ApiError> {
-    log::trace!("handler()");
-
-    match args.command {
-        RepoCommands::List => handle_list(config, args).await?,
-    }
-
-    Ok(())
-}
-
-/// Handle the repository list command.
+/// Handler for the `Catalog` endpoint
 ///
 /// Fetch the list of repository names from the Docker Registry API, and
 /// simply print the resulting names to stdout.
@@ -38,22 +19,22 @@ pub async fn handler(config: &Config, args: &RepoArgs) -> Result<(), ApiError> {
 ///
 /// Returns an `ApiError` if there is a problem fetching or parsing the
 /// responses from the Docker Registry API.  
-async fn handle_list(config: &Config, _args: &RepoArgs) -> Result<(), ApiError> {
+pub async fn handler(config: &Config) -> Result<(), ApiError> {
     #[derive(Deserialize)]
     struct Response {
         repositories: Vec<String>,
     }
 
-    log::trace!("handle_list()");
+    log::trace!("handler()");
 
     let responses: Vec<Response> = fetch_all(config, BASE_CATALOG_URI).await?;
-    let repo_list: Vec<&str> = responses
+    let repository_list: Vec<&str> = responses
         .iter()
         .flat_map(|r| r.repositories.iter().map(String::as_str))
         .collect();
 
-    for repo in repo_list {
-        println!("{repo}");
+    for repository in repository_list {
+        println!("{repository}");
     }
 
     Ok(())
