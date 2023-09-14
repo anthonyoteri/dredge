@@ -14,6 +14,11 @@ const BASE_CATALOG_URI: &str = "/v2/_catalog?n=1000";
 /// Main handler function for the "repo" command.
 ///
 /// Responsible for dispatching the various subcommands.
+///
+/// # Errors:
+///
+/// Returns an `ApiError` if there is a problem handling the requested
+/// subcommand.
 pub async fn handler(config: &Config, args: &RepoArgs) -> Result<(), ApiError> {
     log::trace!("handler()");
 
@@ -28,6 +33,11 @@ pub async fn handler(config: &Config, args: &RepoArgs) -> Result<(), ApiError> {
 ///
 /// Fetch the list of repository names from the Docker Registry API, and
 /// simply print the resulting names to stdout.
+///
+/// # Errors:
+///
+/// Returns an `ApiError` if there is a problem fetching or parsing the
+/// responses from the Docker Registry API.  
 async fn handle_list(config: &Config, _args: &RepoArgs) -> Result<(), ApiError> {
     #[derive(Deserialize)]
     struct Response {
@@ -59,6 +69,13 @@ async fn handle_list(config: &Config, _args: &RepoArgs) -> Result<(), ApiError> 
 /// This function will continuously request the "Next" link as long as it is
 /// returned, collecting and returning the deserialized response bodies as a
 /// Vec<T>.
+///
+/// # Errors:
+///
+/// Returns an `ApiError` if there is a problem constructing the URL from the
+/// configured `registry_url` base and the given `path`, or if there is an
+/// error deserializing the HTTP response body as JSON, or if there is an
+/// error parsing the `Link` header value as an RFC5988 URL.
 async fn fetch_all<T: for<'de> serde::Deserialize<'de>>(
     config: &Config,
     path: &str,
