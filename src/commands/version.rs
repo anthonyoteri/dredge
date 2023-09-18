@@ -17,12 +17,12 @@
 //! Command module responsible for handling the API Version check.
 //!
 //! This is a minimal endpoint suitable for ensuring that the configured
-//! Docker Regsitry API supports the correct API version.
+//! Docker Registry API supports the correct API version.
 //!
 use crate::config::Config;
 use crate::error::ApiError;
 
-/// Path to the Docker Registry API's "api version check" endpoint.
+/// Path to the Docker Registry APIs "api version check" endpoint.
 const BASE_URL: &str = "/v2";
 
 /// Handler for the API Version Check.

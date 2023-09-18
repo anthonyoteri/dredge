@@ -16,8 +16,8 @@
 
 //! Command module responsible for handling the "catalog" command.
 //!
-//! The "catalog" command works with the Docker Registry API's "catalog"
-//! entitity available at /v2/_catalog.
+//! The "catalog" command works with the Docker Registry APIs "catalog"
+//! entity available at /v2/_catalog.
 //!
 use serde::Deserialize;
 
@@ -25,7 +25,7 @@ use crate::api;
 use crate::config::Config;
 use crate::error::ApiError;
 
-/// Path to the Docker Registry API's "catalog" entity.
+/// Path to the Docker Registry APIs "catalog" entity.
 const BASE_CATALOG_URI: &str = "/v2/_catalog";
 
 /// Handler for the `Catalog` endpoint

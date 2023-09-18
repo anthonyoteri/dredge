@@ -40,7 +40,7 @@ const CONFIG_PREFIX: &str = "dredge";
 /// Locate the absolute path to the saved configuration file on disk.
 ///
 /// If given an optional `path` to a configuration file, and that file
-/// exists on disk, the absoulte path to that file will be returned.
+/// exists on disk, the absolute path to that file will be returned.
 /// Otherwise, the XDG configuration path will be used.  If neither the
 /// optional `path` parameter refers to an existing file on disk, nor a
 /// suitable configuration file can be located within the XDG configuration
@@ -75,7 +75,7 @@ fn locate_config_file(path: Option<OsString>) -> Option<PathBuf> {
 ///
 /// # Errors:
 ///
-/// This returns a `ConfigError` if a problem occured which prevented either
+/// This returns a `ConfigError` if a problem occurred which prevented either
 /// the creation of the directory tree, or in writing the default configuration
 /// to the file.
 fn create_default_config_file() -> Result<PathBuf, ConfigError> {
@@ -104,7 +104,7 @@ async fn main() -> Result<(), DredgeError> {
     let config = Config::try_from(config_file.as_ref())?;
     match args.command {
         Commands::Catalog => commands::catalog::handler(&config).await?,
-        Commands::Tags(args) => commands::tags::handler(&config, &args).await?,
+        Commands::Tags { name } => commands::tags::handler(&config, &name).await?,
         Commands::Check => commands::version::handler(&config).await?,
     }
 

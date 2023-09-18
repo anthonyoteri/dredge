@@ -72,23 +72,13 @@ impl From<LogLevel> for log::LevelFilter {
     }
 }
 
-#[derive(Debug, Args)]
-pub struct TagsArgs {
-    /// The image name.
-    #[arg(
-    long,
-    num_args = 0..=1
-    )]
-    pub(crate) name: String,
-}
-
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Fetch the list of available repositories from the catalog.
     Catalog,
 
     /// Fetch the list of tags for a given image.
-    Tags(TagsArgs),
+    Tags { name: String },
 
     /// Perform a simple API Version check towards the configured registry
     /// endpoint.
