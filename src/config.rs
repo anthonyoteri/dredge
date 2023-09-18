@@ -1,8 +1,10 @@
-use crate::error::ConfigError;
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+
+use serde::{Deserialize, Serialize};
 use url::Url;
+
+use crate::error::ConfigError;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Config {

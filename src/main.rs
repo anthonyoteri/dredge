@@ -1,12 +1,15 @@
+use std::ffi::OsString;
+use std::path::PathBuf;
+
+use clap::Parser;
+
 use crate::cli::Cli;
 use crate::cli::Commands;
 use crate::config::Config;
 use crate::error::ConfigError;
 use crate::error::DredgeError;
-use clap::Parser;
-use std::ffi::OsString;
-use std::path::PathBuf;
 
+mod api;
 pub(crate) mod cli;
 mod commands;
 mod config;
@@ -82,11 +85,10 @@ async fn main() -> Result<(), DredgeError> {
         locate_config_file(args.config).map_or_else(create_default_config_file, Ok)?;
     log::debug!("Using configuration file {config_file:?}");
 
-    #[allow(unused_variables)]
     let config = Config::try_from(config_file.as_ref())?;
-
     match args.command {
         Commands::Catalog => commands::catalog::handler(&config).await?,
+        Commands::Tags(args) => commands::tags::handler(&config, &args).await?,
         Commands::Check => commands::version::handler(&config).await?,
     }
 

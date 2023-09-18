@@ -1,4 +1,5 @@
 #![allow(clippy::enum_variant_names)]
+
 use thiserror::Error;
 
 /// The common error type for this Application.

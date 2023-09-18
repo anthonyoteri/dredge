@@ -1,11 +1,12 @@
 #![allow(unused_imports)]
 
+use std::ffi::OsString;
+use std::path::PathBuf;
+
 use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
-use std::ffi::OsString;
-use std::path::PathBuf;
 
 /// Dredge is a command line tool for working with the Docker Registry
 /// V2 API.
@@ -21,13 +22,13 @@ pub(crate) struct Cli {
     pub config: Option<OsString>,
 
     #[arg(
-        long = "log-level",
-        require_equals = true,
-        value_name = "LEVEL",
-        num_args = 0..=1,
-        default_value_t = LogLevel::Info,
-        default_missing_value="info",
-        value_enum
+    long = "log-level",
+    require_equals = true,
+    value_name = "LEVEL",
+    num_args = 0..=1,
+    default_value_t = LogLevel::Info,
+    default_missing_value = "info",
+    value_enum
     )]
     pub log_level: LogLevel,
 }
@@ -55,10 +56,23 @@ impl From<LogLevel> for log::LevelFilter {
     }
 }
 
+#[derive(Debug, Args)]
+pub struct TagsArgs {
+    /// The image name.
+    #[arg(
+    long,
+    num_args = 0..=1
+    )]
+    pub(crate) name: String,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Fetch the list of available repositories from the catalog.
     Catalog,
+
+    /// Fetch the list of tags for a given image.
+    Tags(TagsArgs),
 
     /// Perform a simple API Version check towards the configured registry
     /// endpoint.
