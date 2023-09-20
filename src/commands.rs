@@ -14,10 +14,11 @@
  *    limitations under the License.
  */
 
+use serde::Deserialize;
+
 use crate::api;
 use crate::config::Config;
 use crate::error::ApiError;
-use serde::Deserialize;
 
 /// Handler for the `Catalog` endpoint
 ///
