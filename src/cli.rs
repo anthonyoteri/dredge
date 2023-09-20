@@ -78,7 +78,20 @@ pub enum Commands {
     Catalog,
 
     /// Fetch the list of tags for a given image.
+    #[command(arg_required_else_help = true)]
     Tags { name: String },
+
+    /// Show detailed information about a particular image.
+    #[command(arg_required_else_help = true)]
+    Show {
+        image: String,
+        #[arg(default_missing_value = "latest")]
+        tag: Option<String>,
+    },
+
+    /// Delete a tagged image from the registry.
+    #[command(arg_required_else_help = true)]
+    Delete { image: String, tag: String },
 
     /// Perform a simple API Version check towards the configured registry
     /// endpoint.

@@ -92,3 +92,70 @@ fn parse_rfc5988(header_value: Option<&http::HeaderValue>) -> Result<Option<Stri
 
     Ok(None)
 }
+
+/// Parse the response according to the API Documentation.
+///
+/// If a 200 OK response is returned, the registry implements the V2(.1)
+/// registry API and the client may proceed safely with other V2 operations.
+/// Optionally, the response may contain information about the supported
+/// paths in the response body. The client should be prepared to ignore this data.
+///
+/// If a 401 Unauthorized response is returned, the client should take action
+/// based on the contents of the "WWW-Authenticate" header and try the endpoint
+/// again. Depending on access control setup, the client may still have to
+/// authenticate against different resources, even if this check succeeds.
+///
+/// If 404 Not Found response status, or other unexpected status, is returned,
+/// the client should proceed with the assumption that the registry does not
+/// implement V2 of the API.
+///
+/// When a 200 OK or 401 Unauthorized response is returned, the
+/// "Docker-Distribution-API-Version" header should be set to "registry/2.0".
+/// Clients may require this header value to determine if the endpoint serves
+/// this API. When this header is omitted, clients may fallback to an older
+/// API version.
+///
+/// # Errors:
+///
+/// Returns an `ApiError` on the following conditions:
+///
+/// * There is an error parsing the "Docker-Distribution-API-Version" header.
+/// * The value of the above header is not the expected result.
+/// * The above header is missing from the response.
+/// * A non 200 HTTP response status code is returned.
+pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiError> {
+    match response.status() {
+        http::StatusCode::OK => {
+            let headers = response.headers();
+            if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
+                if header_value.to_str()? != "registry/2.0" {
+                    Err(ApiError::UnsupportedVersion(header_value.to_str()?.into()))
+                } else {
+                    Ok(())
+                }
+            } else {
+                Err(ApiError::UnexpectedResponse(
+                    "Missing version header".into(),
+                ))
+            }
+        }
+        http::StatusCode::UNAUTHORIZED => {
+            let headers = response.headers();
+            if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
+                if header_value.to_str()? != "registry/2.0" {
+                    Err(ApiError::UnsupportedVersion(header_value.to_str()?.into()))
+                } else {
+                    Err(ApiError::AuthorizationFailed)
+                }
+            } else {
+                Err(ApiError::UnexpectedResponse(
+                    "Missing version header".into(),
+                ))
+            }
+        }
+        http::StatusCode::NOT_FOUND => Err(ApiError::NotFound),
+        _ => Err(ApiError::UnexpectedResponse(
+            "Undocumented status code".into(),
+        )),
+    }
+}

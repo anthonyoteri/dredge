@@ -103,9 +103,13 @@ async fn main() -> Result<(), DredgeError> {
 
     let config = Config::try_from(config_file.as_ref())?;
     match args.command {
-        Commands::Catalog => commands::catalog::handler(&config).await?,
-        Commands::Tags { name } => commands::tags::handler(&config, &name).await?,
-        Commands::Check => commands::version::handler(&config).await?,
+        Commands::Catalog => commands::catalog_handler(&config).await?,
+        Commands::Tags { name } => commands::tags_handler(&config, &name).await?,
+        Commands::Show { image, tag } => {
+            commands::show_handler(&config, &image, &tag.unwrap_or("latest".to_string())).await?
+        }
+        Commands::Delete { image, tag } => commands::delete_handler(&config, &image, &tag).await?,
+        Commands::Check => commands::check_handler(&config).await?,
     }
 
     Ok(())
