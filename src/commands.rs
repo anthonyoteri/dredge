@@ -88,9 +88,10 @@ pub async fn tags_handler(config: &Config, name: &str) -> Result<(), ApiError> {
 ///
 /// Returns an `ApiError` if there is a problem fetching the manifest or if there
 /// is a problem parsing the response from the Docker Registry API.
+#[allow(clippy::unused_async)]
 pub async fn show_handler(config: &Config, image: &str, tag: &str) -> Result<(), ApiError> {
     log::trace!("show_handler(image: {image}, tag: {tag})");
-    let base = config.registry_url.to_owned();
+    let base = config.registry_url.clone();
     let path = format!("/v2/{image}/manifests/{tag}");
     let _url = base.join(&path)?;
     Ok(())
@@ -103,6 +104,7 @@ pub async fn show_handler(config: &Config, image: &str, tag: &str) -> Result<(),
 /// Returns and `ApiError` if there is a problem converting the given tag to a
 /// manifest digest, or if there is a problem deleting the manifest from the
 /// Docker Registry API.
+#[allow(clippy::unused_async)]
 pub async fn delete_handler(_config: &Config, image: &str, tag: &str) -> Result<(), ApiError> {
     log::trace!("delete_handler(image: {image}, tag: {tag})");
     todo!()
@@ -119,7 +121,7 @@ pub async fn delete_handler(_config: &Config, image: &str, tag: &str) -> Result<
 pub async fn check_handler(config: &Config) -> Result<(), ApiError> {
     log::trace!("check_handler()");
 
-    let base = config.registry_url.to_owned();
+    let base = config.registry_url.clone();
     let path = "/v2";
     let url = base.join(path)?;
 

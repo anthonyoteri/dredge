@@ -50,24 +50,18 @@ const CONFIG_PREFIX: &str = "dredge";
 fn locate_config_file(path: Option<OsString>) -> Option<PathBuf> {
     log::trace!("locate_config_file({path:?})");
 
-    match path {
-        Some(path) => {
-            let p = PathBuf::from(path);
-            log::debug!("Checking if path {p:?} exists");
-            p.try_exists().map(|_| Some(p)).unwrap_or(None)
-        }
-        None => {
-            let xdg_dirs = xdg::BaseDirectories::with_prefix(CONFIG_PREFIX).ok()?;
-            let search_paths: Vec<PathBuf> = vec![xdg_dirs.get_config_home()]
-                .into_iter()
-                .chain(xdg_dirs.get_config_dirs())
-                .collect();
-
-            log::debug!(
-                "Searching configuration directories for {CONFIG_FILE_NAME} {search_paths:?}"
-            );
-            xdg_dirs.find_config_file(CONFIG_FILE_NAME)
-        }
+    if let Some(path) = path {
+        let p = PathBuf::from(path);
+        log::debug!("Checking if path {p:?} exists");
+        p.try_exists().map(|_| Some(p)).unwrap_or(None)
+    } else {
+        let xdg_dirs = xdg::BaseDirectories::with_prefix(CONFIG_PREFIX).ok()?;
+        let search_paths: Vec<PathBuf> = vec![xdg_dirs.get_config_home()]
+            .into_iter()
+            .chain(xdg_dirs.get_config_dirs())
+            .collect();
+        log::debug!("Searching configuration directories for {CONFIG_FILE_NAME} {search_paths:?}");
+        xdg_dirs.find_config_file(CONFIG_FILE_NAME)
     }
 }
 
@@ -108,7 +102,7 @@ async fn main() -> Result<(), DredgeError> {
         Commands::Catalog => commands::catalog_handler(&config).await?,
         Commands::Tags { name } => commands::tags_handler(&config, &name).await?,
         Commands::Show { image, tag } => {
-            commands::show_handler(&config, &image, &tag.unwrap_or("latest".to_string())).await?
+            commands::show_handler(&config, &image, &tag.unwrap_or("latest".to_string())).await?;
         }
         Commands::Delete { image, tag } => commands::delete_handler(&config, &image, &tag).await?,
         Commands::Check => commands::check_handler(&config).await?,
