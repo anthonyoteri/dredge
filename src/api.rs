@@ -15,8 +15,8 @@
  */
 
 use serde::Deserialize;
+use url::Url;
 
-use crate::config::Config;
 use crate::error::ApiError;
 
 /// Iterate over a paginated result set, collecting and returning the response
@@ -37,7 +37,7 @@ use crate::error::ApiError;
 /// error deserializing the HTTP response body as JSON, or if there is an
 /// error parsing the `Link` header value as an RFC5988 URL.
 pub async fn fetch_all<T: for<'de> Deserialize<'de>>(
-    config: &Config,
+    base: &Url,
     path: &str,
 ) -> Result<Vec<T>, ApiError> {
     log::trace!("fetch_all({path:?})");
@@ -46,7 +46,7 @@ pub async fn fetch_all<T: for<'de> Deserialize<'de>>(
     let mut path = String::from(path);
     loop {
         log::debug!("GET {path:?}");
-        let url = config.registry_url.join(&path)?;
+        let url = base.join(&path)?;
 
         let resp = reqwest::get(url).await?;
         let headers = resp.headers().clone();

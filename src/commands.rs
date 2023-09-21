@@ -15,9 +15,9 @@
  */
 
 use serde::Deserialize;
+use url::Url;
 
 use crate::api;
-use crate::config::Config;
 use crate::error::ApiError;
 
 /// Handler for the `Catalog` endpoint
@@ -29,7 +29,7 @@ use crate::error::ApiError;
 ///
 /// Returns an `ApiError` if there is a problem fetching or parsing the
 /// responses from the Docker Registry API.  
-pub async fn catalog_handler(config: &Config) -> Result<(), ApiError> {
+pub async fn catalog_handler(registry_url: &Url) -> Result<(), ApiError> {
     #[derive(Deserialize)]
     struct Response {
         repositories: Vec<String>,
@@ -38,7 +38,7 @@ pub async fn catalog_handler(config: &Config) -> Result<(), ApiError> {
     log::trace!("catalog_handler()");
     let path = "v2/_catalog";
 
-    let responses: Vec<Response> = api::fetch_all(config, path).await?;
+    let responses: Vec<Response> = api::fetch_all(registry_url, path).await?;
     let repository_list: Vec<&str> = responses
         .iter()
         .flat_map(|r| r.repositories.iter().map(String::as_str))
@@ -60,7 +60,7 @@ pub async fn catalog_handler(config: &Config) -> Result<(), ApiError> {
 ///
 /// Returns an `ApiError` if there is a problem fetching or parsing the
 /// responses from the Docker Registry API.  
-pub async fn tags_handler(config: &Config, name: &str) -> Result<(), ApiError> {
+pub async fn tags_handler(registry_url: &Url, name: &str) -> Result<(), ApiError> {
     #[derive(Deserialize)]
     struct Response {
         tags: Vec<String>,
@@ -69,7 +69,7 @@ pub async fn tags_handler(config: &Config, name: &str) -> Result<(), ApiError> {
     log::trace!("tags_handler(name: {name})");
     let path = format!("/v2/{name}/tags/list");
 
-    let responses: Vec<Response> = api::fetch_all(config, &path).await?;
+    let responses: Vec<Response> = api::fetch_all(registry_url, &path).await?;
     let tag_list: Vec<&str> = responses
         .iter()
         .flat_map(|r| r.tags.iter().map(String::as_str))
@@ -89,11 +89,10 @@ pub async fn tags_handler(config: &Config, name: &str) -> Result<(), ApiError> {
 /// Returns an `ApiError` if there is a problem fetching the manifest or if there
 /// is a problem parsing the response from the Docker Registry API.
 #[allow(clippy::unused_async)]
-pub async fn show_handler(config: &Config, image: &str, tag: &str) -> Result<(), ApiError> {
+pub async fn show_handler(registry_url: &Url, image: &str, tag: &str) -> Result<(), ApiError> {
     log::trace!("show_handler(image: {image}, tag: {tag})");
-    let base = config.registry_url.clone();
     let path = format!("/v2/{image}/manifests/{tag}");
-    let _url = base.join(&path)?;
+    let _url = registry_url.join(&path)?;
     Ok(())
 }
 
@@ -105,7 +104,7 @@ pub async fn show_handler(config: &Config, image: &str, tag: &str) -> Result<(),
 /// manifest digest, or if there is a problem deleting the manifest from the
 /// Docker Registry API.
 #[allow(clippy::unused_async)]
-pub async fn delete_handler(_config: &Config, image: &str, tag: &str) -> Result<(), ApiError> {
+pub async fn delete_handler(_registry_url: &Url, image: &str, tag: &str) -> Result<(), ApiError> {
     log::trace!("delete_handler(image: {image}, tag: {tag})");
     todo!()
 }
@@ -118,12 +117,11 @@ pub async fn delete_handler(_config: &Config, image: &str, tag: &str) -> Result<
 ///
 /// Returns an `ApiError` if there is a problem communicating with the
 /// endpoint or if the required version is not supported.
-pub async fn check_handler(config: &Config) -> Result<(), ApiError> {
+pub async fn check_handler(registry_url: &Url) -> Result<(), ApiError> {
     log::trace!("check_handler()");
 
-    let base = config.registry_url.clone();
     let path = "/v2";
-    let url = base.join(path)?;
+    let url = registry_url.join(path)?;
 
     let response = reqwest::get(url).await?;
 

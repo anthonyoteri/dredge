@@ -16,15 +16,12 @@
 
 #![deny(clippy::pedantic)]
 
-use std::ffi::OsString;
-use std::path::PathBuf;
-
 use clap::Parser;
+use url::Url;
 
 use crate::cli::Cli;
 use crate::cli::Commands;
-use crate::config::Config;
-use crate::error::ConfigError;
+
 use crate::error::DredgeError;
 
 mod api;
@@ -33,55 +30,27 @@ mod commands;
 mod config;
 mod error;
 
-/// The default basename of the main configuration file.
-const CONFIG_FILE_NAME: &str = "dredge.toml";
-
-/// The XDG directory prefix.
-const CONFIG_PREFIX: &str = "dredge";
-
-/// Locate the absolute path to the saved configuration file on disk.
+/// Generate the full Docker Registry URL from a given `host[:port]`
 ///
-/// If given an optional `path` to a configuration file, and that file
-/// exists on disk, the absolute path to that file will be returned.
-/// Otherwise, the XDG configuration path will be used.  If neither the
-/// optional `path` parameter refers to an existing file on disk, nor a
-/// suitable configuration file can be located within the XDG configuration
-/// path, the `None` variant will be returned.
-fn locate_config_file(path: Option<OsString>) -> Option<PathBuf> {
-    log::trace!("locate_config_file({path:?})");
-
-    if let Some(path) = path {
-        let p = PathBuf::from(path);
-        log::debug!("Checking if path {p:?} exists");
-        p.try_exists().map(|_| Some(p)).unwrap_or(None)
-    } else {
-        let xdg_dirs = xdg::BaseDirectories::with_prefix(CONFIG_PREFIX).ok()?;
-        let search_paths: Vec<PathBuf> = vec![xdg_dirs.get_config_home()]
-            .into_iter()
-            .chain(xdg_dirs.get_config_dirs())
-            .collect();
-        log::debug!("Searching configuration directories for {CONFIG_FILE_NAME} {search_paths:?}");
-        xdg_dirs.find_config_file(CONFIG_FILE_NAME)
-    }
-}
-
-/// Attempt to create a default configuration file in the XDG configuration
-/// path.  Any sub-directories of the XDG configuration path which do not
-/// already exist will be created automatically.
+/// This prepends the HTTPS scheme and converts the given string to a `Url`
+/// instance.
+///
+/// If the given `host` value is already a valid URL, then it will be returned
+/// as-is.
 ///
 /// # Errors:
 ///
-/// This returns a `ConfigError` if a problem occurred which prevented either
-/// the creation of the directory tree, or in writing the default configuration
-/// to the file.
-fn create_default_config_file() -> Result<PathBuf, ConfigError> {
-    log::trace!("create_default_config_file()");
+/// If there is a problem parsing the resulting string as a valid URL, a
+/// `DredgeError::RegistryUrlError` will be returned.
+fn make_registry_url(host: &str) -> Result<Url, DredgeError> {
+    log::trace!("make_registry_url(host: {host})");
 
-    let xdg_dirs = xdg::BaseDirectories::with_prefix(CONFIG_PREFIX)?;
-    let config_path = xdg_dirs.place_config_file(CONFIG_FILE_NAME)?;
-    let default_config = toml::to_string_pretty(&Config::default())?;
-    std::fs::write(&config_path, default_config)?;
-    Ok(config_path)
+    Url::parse(host)
+        .or_else(|_| {
+            let url_string = format!("https://{host}");
+            Url::parse(&url_string)
+        })
+        .or(Err(DredgeError::RegistryUrlError(host.to_string())))
 }
 
 #[async_std::main]
@@ -92,20 +61,20 @@ async fn main() -> Result<(), DredgeError> {
     let log_level = args.log_level;
     femme::with_level(log::LevelFilter::from(log_level));
 
-    // -- Load and parse configuration file
-    let config_file =
-        locate_config_file(args.config).map_or_else(create_default_config_file, Ok)?;
-    log::debug!("Using configuration file {config_file:?}");
+    // -- Generate the complete registry URL from the given host[:path]
+    let registry_url: Url = make_registry_url(&args.registry)?;
 
-    let config = Config::try_from(config_file.as_ref())?;
     match args.command {
-        Commands::Catalog => commands::catalog_handler(&config).await?,
-        Commands::Tags { name } => commands::tags_handler(&config, &name).await?,
+        Commands::Catalog => commands::catalog_handler(&registry_url).await?,
+        Commands::Tags { name } => commands::tags_handler(&registry_url, &name).await?,
         Commands::Show { image, tag } => {
-            commands::show_handler(&config, &image, &tag.unwrap_or("latest".to_string())).await?;
+            commands::show_handler(&registry_url, &image, &tag.unwrap_or("latest".to_string()))
+                .await?;
         }
-        Commands::Delete { image, tag } => commands::delete_handler(&config, &image, &tag).await?,
-        Commands::Check => commands::check_handler(&config).await?,
+        Commands::Delete { image, tag } => {
+            commands::delete_handler(&registry_url, &image, &tag).await?;
+        }
+        Commands::Check => commands::check_handler(&registry_url).await?,
     }
 
     Ok(())
