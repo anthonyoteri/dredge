@@ -92,7 +92,6 @@ pub enum Commands {
     #[command(arg_required_else_help = true)]
     Delete { image: String, tag: String },
 
-    /// Perform a simple API Version check towards the configured registry
-    /// endpoint.
+    /// Perform a simple version check towards the Docker Registry API
     Check,
 }
