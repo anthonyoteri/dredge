@@ -36,24 +36,23 @@ use crate::error::ApiError;
 /// configured `registry_url` base and the given `path`, or if there is an
 /// error deserializing the HTTP response body as JSON, or if there is an
 /// error parsing the `Link` header value as an RFC5988 URL.
-pub async fn fetch_all<T: for<'de> Deserialize<'de>>(
-    base: &Url,
+pub async fn fetch_paginated<T: for<'de> Deserialize<'de>>(
+    origin: &Url,
     path: &str,
 ) -> Result<Vec<T>, ApiError> {
-    log::trace!("fetch_all({path:?})");
+    log::trace!("fetch_paginated(origin: {origin:?}, path: {path:?})");
 
     let mut responses: Vec<T> = Vec::default();
-    let mut path = String::from(path);
+    let mut next_path = String::from(path);
     loop {
-        log::debug!("GET {path:?}");
-        let url = base.join(&path)?;
+        let url = origin.join(&next_path)?;
 
         let resp = reqwest::get(url).await?;
         let headers = resp.headers().clone();
         responses.push(resp.json().await?);
 
         if let Some(p) = parse_rfc5988(headers.get(http::header::LINK))? {
-            path = p;
+            next_path = p;
         } else {
             break;
         }
@@ -74,7 +73,7 @@ pub async fn fetch_all<T: for<'de> Deserialize<'de>>(
 /// Returns and `ApiError` if there is a problem parsing contents of the
 /// supplied header value.
 fn parse_rfc5988(header_value: Option<&http::HeaderValue>) -> Result<Option<String>, ApiError> {
-    log::trace!("parse_rfc5988({header_value:?})");
+    log::trace!("parse_rfc5988(header_value: {header_value:?})");
 
     if let Some(link_value) = header_value {
         let link_str = link_value.to_str()?;
@@ -124,6 +123,8 @@ fn parse_rfc5988(header_value: Option<&http::HeaderValue>) -> Result<Option<Stri
 /// * The above header is missing from the response.
 /// * A non 200 HTTP response status code is returned.
 pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiError> {
+    log::trace!("parse_response_status(response: {response:?})");
+
     match response.status() {
         http::StatusCode::OK => {
             let headers = response.headers();

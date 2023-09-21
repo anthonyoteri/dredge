@@ -35,10 +35,10 @@ pub async fn catalog_handler(registry_url: &Url) -> Result<(), ApiError> {
         repositories: Vec<String>,
     }
 
-    log::trace!("catalog_handler()");
+    log::trace!("catalog_handler(registry_url: {registry_url:?})");
     let path = "v2/_catalog";
 
-    let responses: Vec<Response> = api::fetch_all(registry_url, path).await?;
+    let responses: Vec<Response> = api::fetch_paginated(registry_url, path).await?;
     let repository_list: Vec<&str> = responses
         .iter()
         .flat_map(|r| r.repositories.iter().map(String::as_str))
@@ -66,10 +66,10 @@ pub async fn tags_handler(registry_url: &Url, name: &str) -> Result<(), ApiError
         tags: Vec<String>,
     }
 
-    log::trace!("tags_handler(name: {name})");
+    log::trace!("tags_handler(registry_url: {registry_url:?}, name: {name})");
     let path = format!("/v2/{name}/tags/list");
 
-    let responses: Vec<Response> = api::fetch_all(registry_url, &path).await?;
+    let responses: Vec<Response> = api::fetch_paginated(registry_url, &path).await?;
     let tag_list: Vec<&str> = responses
         .iter()
         .flat_map(|r| r.tags.iter().map(String::as_str))
@@ -90,7 +90,7 @@ pub async fn tags_handler(registry_url: &Url, name: &str) -> Result<(), ApiError
 /// is a problem parsing the response from the Docker Registry API.
 #[allow(clippy::unused_async)]
 pub async fn show_handler(registry_url: &Url, image: &str, tag: &str) -> Result<(), ApiError> {
-    log::trace!("show_handler(image: {image}, tag: {tag})");
+    log::trace!("show_handler(registry_url: {registry_url:?}, image: {image}, tag: {tag})");
     let path = format!("/v2/{image}/manifests/{tag}");
     let _url = registry_url.join(&path)?;
     Ok(())
@@ -104,8 +104,8 @@ pub async fn show_handler(registry_url: &Url, image: &str, tag: &str) -> Result<
 /// manifest digest, or if there is a problem deleting the manifest from the
 /// Docker Registry API.
 #[allow(clippy::unused_async)]
-pub async fn delete_handler(_registry_url: &Url, image: &str, tag: &str) -> Result<(), ApiError> {
-    log::trace!("delete_handler(image: {image}, tag: {tag})");
+pub async fn delete_handler(registry_url: &Url, image: &str, tag: &str) -> Result<(), ApiError> {
+    log::trace!("delete_handler(registry_url: {registry_url:?}, image: {image}, tag: {tag})");
     todo!()
 }
 
@@ -118,14 +118,12 @@ pub async fn delete_handler(_registry_url: &Url, image: &str, tag: &str) -> Resu
 /// Returns an `ApiError` if there is a problem communicating with the
 /// endpoint or if the required version is not supported.
 pub async fn check_handler(registry_url: &Url) -> Result<(), ApiError> {
-    log::trace!("check_handler()");
+    log::trace!("check_handler(registry_url: {registry_url:?})");
 
     let path = "/v2";
     let url = registry_url.join(path)?;
 
     let response = reqwest::get(url).await?;
-
     api::parse_response_status(&response)?;
-    println!("Ok");
     Ok(())
 }
