@@ -27,10 +27,12 @@ use crate::error::DredgeError;
 mod api;
 pub(crate) mod cli;
 mod commands;
-mod config;
 mod error;
 
-/// Generate the full Docker Registry URL from a given `host[:port]`
+/// Name of "latest" tag
+const LATEST: &str = "latest";
+
+/// Parse the "<REGISTRY>" argument into a complete  Docker Registry URL.
 ///
 /// This prepends the HTTPS scheme and converts the given string to a `Url`
 /// instance.
@@ -42,14 +44,11 @@ mod error;
 ///
 /// If there is a problem parsing the resulting string as a valid URL, a
 /// `DredgeError::RegistryUrlError` will be returned.
-fn make_registry_url(host: &str) -> Result<Url, DredgeError> {
+fn parse_registry_arg(host: &str) -> Result<Url, DredgeError> {
     log::trace!("make_registry_url(host: {host})");
 
     Url::parse(host)
-        .or_else(|_| {
-            let url_string = format!("https://{host}");
-            Url::parse(&url_string)
-        })
+        .or_else(|_| Url::parse(&format!("https://{host}")))
         .or(Err(DredgeError::RegistryUrlError(host.to_string())))
 }
 
@@ -61,14 +60,15 @@ async fn main() -> Result<(), DredgeError> {
     let log_level = args.log_level;
     femme::with_level(log::LevelFilter::from(log_level));
 
-    // -- Generate the complete registry URL from the given host[:path]
-    let registry_url: Url = make_registry_url(&args.registry)?;
+    // -- Parse the given <REGISTRY> argument into a complete URL
+    let registry_url: Url = parse_registry_arg(&args.registry)?;
 
+    // -- Dispatch control to the appropriate command handler.
     match args.command {
         Commands::Catalog => commands::catalog_handler(&registry_url).await?,
         Commands::Tags { name } => commands::tags_handler(&registry_url, &name).await?,
         Commands::Show { image, tag } => {
-            commands::show_handler(&registry_url, &image, &tag.unwrap_or("latest".to_string()))
+            commands::show_handler(&registry_url, &image, &tag.unwrap_or(LATEST.to_string()))
                 .await?;
         }
         Commands::Delete { image, tag } => {
