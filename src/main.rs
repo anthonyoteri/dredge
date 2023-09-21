@@ -14,6 +14,8 @@
  *    limitations under the License.
  */
 
+#![deny(clippy::pedantic)]
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 
