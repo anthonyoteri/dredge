@@ -24,7 +24,7 @@ use crate::error::ApiError;
 ///
 /// The Docker Registry API specifies that when making a GET request, the
 /// response will be paginated using a Link response header for the Next URI.
-/// The URL will be encoded using RFC5988. [https://tools.ietf.org/html/rfc5988]
+/// The URL will be encoded using [RFC5988](https://tools.ietf.org/html/rfc5988)
 ///
 /// This function will continuously request the "Next" link as long as it is
 /// returned, collecting and returning the deserialized response bodies as a
@@ -43,17 +43,17 @@ pub async fn fetch_all<T: for<'de> Deserialize<'de>>(
     log::trace!("fetch_all({path:?})");
 
     let mut responses: Vec<T> = Vec::default();
-    let mut uri = String::from(path);
+    let mut path = String::from(path);
     loop {
-        log::debug!("GET {uri:?}");
-        let url = config.registry_url.join(&uri)?;
+        log::debug!("GET {path:?}");
+        let url = config.registry_url.join(&path)?;
 
         let resp = reqwest::get(url).await?;
-        let headers = resp.headers().to_owned();
+        let headers = resp.headers().clone();
         responses.push(resp.json().await?);
 
-        if let Some(path) = parse_rfc5988(headers.get(http::header::LINK))? {
-            uri = path;
+        if let Some(p) = parse_rfc5988(headers.get(http::header::LINK))? {
+            path = p;
         } else {
             break;
         }
@@ -64,8 +64,8 @@ pub async fn fetch_all<T: for<'de> Deserialize<'de>>(
 /// Given an optional header value possibly containing an RFC5988 formatted
 /// URL, parse said URL into a `String`.
 ///
-/// If the header_value does not contain a correctly formatted RFC5988 URL,
-/// or if the header_value is not properly formatted containing a URL
+/// If the `header_value` does not contain a correctly formatted RFC5988 URL,
+/// or if the `header_value` is not properly formatted containing a URL
 /// surrounded by angle brackets, separated from the link relation by a ';'
 /// character, the `None` variant will be returned.
 ///
@@ -128,10 +128,10 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
         http::StatusCode::OK => {
             let headers = response.headers();
             if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
-                if header_value.to_str()? != "registry/2.0" {
-                    Err(ApiError::UnsupportedVersion(header_value.to_str()?.into()))
-                } else {
+                if header_value.to_str()? == "registry/2.0" {
                     Ok(())
+                } else {
+                    Err(ApiError::UnsupportedVersion(header_value.to_str()?.into()))
                 }
             } else {
                 Err(ApiError::UnexpectedResponse(
@@ -142,10 +142,10 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
         http::StatusCode::UNAUTHORIZED => {
             let headers = response.headers();
             if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
-                if header_value.to_str()? != "registry/2.0" {
-                    Err(ApiError::UnsupportedVersion(header_value.to_str()?.into()))
-                } else {
+                if header_value.to_str()? == "registry/2.0" {
                     Err(ApiError::AuthorizationFailed)
+                } else {
+                    Err(ApiError::UnsupportedVersion(header_value.to_str()?.into()))
                 }
             } else {
                 Err(ApiError::UnexpectedResponse(

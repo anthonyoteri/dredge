@@ -41,7 +41,6 @@ jobs:
             --all-features
             --tests
             --message-format=json 
-            -- -D warnings
             | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
           continue-on-error: true
 
