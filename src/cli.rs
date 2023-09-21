@@ -33,10 +33,6 @@ pub(crate) struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    /// Optional configuration file override.
-    #[arg(short = 'c', long = "config")]
-    pub config: Option<OsString>,
-
     #[arg(
     long = "log-level",
     require_equals = true,
@@ -48,7 +44,7 @@ pub(crate) struct Cli {
     )]
     pub log_level: LogLevel,
 
-    /// The host or host:port for the Docker Registry
+    /// The host or host:port or full base URL of the Docker Registry
     pub registry: String,
 }
 
