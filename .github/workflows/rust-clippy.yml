@@ -1,0 +1,50 @@
+name: Rust Clippy Analysis
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  schedule:
+    - cron: "18 21 * * 6"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+    rust-clippy:
+      name: Run rust-clippy analysis
+      runs-on: ubuntu-latest
+      permissions:
+        contents: read
+        security-events: write
+        actions: read
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v3
+
+        - name: Install Rust Toolchain
+          uses: dtolnay/rust-toolchain@stable
+          with:
+            toolchain: stable
+            components: clippy
+
+        - name: Cache build dependencies
+          uses: Swatinem/rust-cache@v2
+
+        - name: Install clippy-sarif
+          run: cargo install clippy-sarif sarif-fmt
+
+        - name: Run rust-clippy
+          run:
+            cargo clippy
+            --all-features
+            --tests
+            --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+          continue-on-error: true
+
+        - name: Upload analysis results ot GitHub
+          uses: github/codeql-action/upload-sarif@v2
+          with:
+            sarif_file: rust-clippy-results.sarif
+            wait-for-processing: true

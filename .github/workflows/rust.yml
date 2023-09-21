@@ -10,40 +10,44 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
+  rust-fmt-check:
+    name: Run Rust-fmt check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          profile: minimal
-          components: rustfmt,clippy
-      - uses: Swatinem/rust-cache@v2
-      - name: Formatting
+          components: rustfmt
+
+      - name: Cache build dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run rust-fmt --check
         run: cargo fmt --check --all
-      - name: Linting
-        run: cargo clippy --all --tests
 
   test:
+    name: Run unit and integration tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          profile: minimal
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test
+          components: rustfmt
 
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-    - uses: Swatinem/rust-cache@v2
-    - name: Build
-      run: cargo build
+      - name: Cache build dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo-test
+        run: cargo test
