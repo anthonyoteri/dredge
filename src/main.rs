@@ -21,7 +21,6 @@ use url::Url;
 
 use crate::cli::Cli;
 use crate::cli::Commands;
-
 use crate::error::DredgeError;
 
 mod api;

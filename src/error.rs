@@ -16,6 +16,7 @@
 
 #![allow(clippy::enum_variant_names)]
 #![allow(clippy::module_name_repetitions)]
+
 use thiserror::Error;
 
 /// The common error type for this Application.
