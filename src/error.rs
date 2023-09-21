@@ -28,6 +28,10 @@ pub enum DredgeError {
     /// An error communicating with the Registry API
     #[error(transparent)]
     ApiError(#[from] ApiError),
+
+    /// An error building the registry URL
+    #[error("Error determining registry URL from {0}")]
+    RegistryUrlError(String),
 }
 
 /// An error related to the configuration fo the program.

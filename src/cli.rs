@@ -47,6 +47,9 @@ pub(crate) struct Cli {
     value_enum
     )]
     pub log_level: LogLevel,
+
+    /// The host or host:port for the Docker Registry
+    pub registry: String,
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
