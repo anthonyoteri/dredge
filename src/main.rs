@@ -17,6 +17,7 @@
 #![deny(clippy::pedantic)]
 
 use clap::Parser;
+use std::io::{self, Write};
 use url::Url;
 
 use crate::cli::Cli;
@@ -63,18 +64,26 @@ async fn main() -> Result<(), DredgeError> {
     let registry_url: Url = parse_registry_arg(&args.registry)?;
 
     // -- Dispatch control to the appropriate command handler.
+    let mut buf: Vec<u8> = Vec::new();
     match args.command {
-        Commands::Catalog => commands::catalog_handler(&registry_url).await?,
-        Commands::Tags { name } => commands::tags_handler(&registry_url, &name).await?,
+        Commands::Catalog => commands::catalog_handler(&mut buf, &registry_url).await?,
+        Commands::Tags { name } => commands::tags_handler(&mut buf, &registry_url, &name).await?,
         Commands::Show { image, tag } => {
-            commands::show_handler(&registry_url, &image, &tag.unwrap_or(LATEST.to_string()))
-                .await?;
+            commands::show_handler(
+                &mut buf,
+                &registry_url,
+                &image,
+                &tag.unwrap_or(LATEST.to_string()),
+            )
+            .await?;
         }
         Commands::Delete { image, tag } => {
-            commands::delete_handler(&registry_url, &image, &tag).await?;
+            commands::delete_handler(&mut buf, &registry_url, &image, &tag).await?;
         }
-        Commands::Check => commands::check_handler(&registry_url).await?,
+        Commands::Check => commands::check_handler(&mut buf, &registry_url).await?,
     }
+
+    io::stdout().write_all(&buf)?;
 
     Ok(())
 }
