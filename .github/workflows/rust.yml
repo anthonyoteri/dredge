@@ -33,7 +33,10 @@ jobs:
 
   test:
     name: Run unit and integration tests
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
     permissions:
       contents: read
     steps:
