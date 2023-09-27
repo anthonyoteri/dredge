@@ -26,7 +26,7 @@ use clap::ValueEnum;
 
 /// Dredge is a command line tool for working with the Docker Registry
 /// V2 API.
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, PartialEq, Eq)]
 #[command(name = "dredge", version, author)]
 #[command(about, long_about)]
 pub(crate) struct Cli {
@@ -71,7 +71,7 @@ impl From<LogLevel> for log::LevelFilter {
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, PartialEq, Eq)]
 pub enum Commands {
     /// Fetch the list of available repositories from the catalog.
     Catalog,
@@ -94,4 +94,158 @@ pub enum Commands {
 
     /// Perform a simple version check towards the Docker Registry API
     Check,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that given the --log-level option, ensure that the corresponding
+    /// `LogLevel` variant is set.
+    #[test]
+    fn test_log_level_option_off() {
+        let args = vec!["dredge", "--log-level=off", "registry.local", "check"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.log_level, LogLevel::Off);
+    }
+
+    /// Test that given the --log-level option, ensure that the corresponding
+    /// `LogLevel` variant is set.
+    #[test]
+    fn test_log_level_option_trace() {
+        let args = vec!["dredge", "--log-level=trace", "registry.local", "check"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.log_level, LogLevel::Trace);
+    }
+
+    /// Test that given the --log-level option, ensure that the corresponding
+    /// `LogLevel` variant is set.
+    #[test]
+    fn test_log_level_option_debug() {
+        let args = vec!["dredge", "--log-level=debug", "registry.local", "check"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.log_level, LogLevel::Debug);
+    }
+
+    /// Test that given the --log-level option, ensure that the corresponding
+    /// `LogLevel` variant is set.
+    #[test]
+    fn test_log_level_option_info() {
+        let args = vec!["dredge", "--log-level=info", "registry.local", "check"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.log_level, LogLevel::Info);
+    }
+
+    /// Test that given the --log-level option, ensure that the corresponding
+    /// `LogLevel` variant is set.
+    #[test]
+    fn test_log_level_option_warn() {
+        let args = vec!["dredge", "--log-level=warn", "registry.local", "check"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.log_level, LogLevel::Warn);
+    }
+
+    /// Test that given the --log-level option, ensure that the corresponding
+    /// `LogLevel` variant is set.
+    #[test]
+    fn test_log_level_option_error() {
+        let args = vec!["dredge", "--log-level=error", "registry.local", "check"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.log_level, LogLevel::Error);
+    }
+
+    /// Test that given the <REGISTRY> argument and the "catalog" command,
+    /// ensure that the expected values are received.
+    #[test]
+    fn test_catalog_command() {
+        let args = vec!["dredge", "registry.local", "catalog"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.registry, String::from("registry.local"));
+        assert_eq!(cli.command, Commands::Catalog);
+    }
+
+    /// Test that given the <REGISTRY> argument and the "tags" command with a
+    /// specific image name, the expected values are received.
+    #[test]
+    fn test_tags_command() {
+        let args = vec!["dredge", "registry.local", "tags", "foobar"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.registry, *"registry.local");
+        assert_eq!(
+            cli.command,
+            Commands::Tags {
+                name: String::from("foobar")
+            }
+        );
+    }
+
+    /// Test that given the <REGSITRY> argument and the "show" command with
+    /// an image name but no tag, the expected values are received.
+    #[test]
+    fn test_show_command() {
+        let args = vec!["dredge", "registry.local", "show", "foo"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.registry, *"registry.local");
+        assert_eq!(
+            cli.command,
+            Commands::Show {
+                image: String::from("foo"),
+                tag: None,
+            }
+        );
+    }
+
+    /// Test that given the <REGSITRY> argument and the "show" command with
+    /// both an image and tag, the expected values are received.
+    #[test]
+    fn test_show_command_with_optional_tag() {
+        let args = vec!["dredge", "registry.local", "show", "foo", "bar"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.registry, *"registry.local");
+        assert_eq!(
+            cli.command,
+            Commands::Show {
+                image: String::from("foo"),
+                tag: Some(String::from("bar")),
+            }
+        );
+    }
+
+    /// Test that given the <REGISTRY> argument and the "delete" command, with
+    /// both an image and tag, the expected values are received.
+    #[test]
+    fn test_delete_command() {
+        let args = vec!["dredge", "registry.local", "delete", "foo", "bar"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.registry, *"registry.local");
+        assert_eq!(
+            cli.command,
+            Commands::Delete {
+                image: String::from("foo"),
+                tag: String::from("bar"),
+            }
+        );
+    }
+
+    /// Test that given the <REGISTRY> argument and the "check" command, the
+    /// expected values are received.
+    #[test]
+    fn test_check_command() {
+        let args = vec!["dredge", "registry.local", "check"];
+        let cli = Cli::parse_from(args);
+
+        assert_eq!(cli.registry, *"registry.local");
+        assert_eq!(cli.command, Commands::Check);
+    }
 }

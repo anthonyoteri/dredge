@@ -160,3 +160,45 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use http::header::HeaderValue;
+
+    use super::*;
+
+    /// Test parsing a valid RFC5988 header value.
+    ///
+    /// Attempt to parse a valid RFC5988 header value, and ensure that the
+    /// parsed URL was returned as expected.
+    #[async_std::test]
+    async fn test_parse_rfc5988_valid() {
+        // Mock a valid RFC5988 header value
+        let valid_header_value =
+            HeaderValue::from_str(r#"<https://example.com/related>; rel="related""#)
+                .expect("Failed to create valid header value");
+
+        // Call the parse_rfc5988 function with the valid header value
+        let result = parse_rfc5988(Some(&valid_header_value)).unwrap();
+
+        // Assert that the function returned the expected URL as Some(String)
+        assert_eq!(result, Some(String::from("https://example.com/related")));
+    }
+
+    /// Test parsing an invalid RFC5988 header value.
+    ///
+    /// Attempt to parse an invalid string as RFC5988, ensuring that the `None`
+    /// variant is returned.
+    #[async_std::test]
+    async fn test_parse_rfc5988_invalid() {
+        // Mock a valid RFC5988 header value
+        let invalid_header_value = HeaderValue::from_str(r#"invalid header value"#)
+            .expect("Failed to create valid header value");
+
+        // Call the parse_rfc5988 function with the valid header value
+        let result = parse_rfc5988(Some(&invalid_header_value)).unwrap();
+
+        // Assert that the function returned the expected URL as Some(String)
+        assert_eq!(result, None);
+    }
+}
