@@ -112,7 +112,7 @@ mod tests {
     }
 
     /// Test that given only an FQDN for a specific host in the <REGISTRY>
-    /// argument, we return an HTTPS url with that FQDN as the host_str.
+    /// argument, we return an HTTPS url with that FQDN as the host.
     #[test]
     fn test_parse_valid_fqdn_registry_arg() {
         let host = "example.com";
