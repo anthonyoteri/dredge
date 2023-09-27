@@ -2,6 +2,21 @@
 name = "dredge"
 version = "0.1.0"
 edition = "2021"
+authors = ["Anthony Oteri"]
+description = "A Command Line tool for interracting with the Docker Registry API"
+readme = "README.md"
+repository = "https://github.com/anthonyoteri/dredge"
+rust-version = "1.72"
+license-file = "LICENSE"
+keywords = [
+    "docker",
+    "registry",
+    "cli",
+]
+categories = [
+    "command-line-utilities",
+    "api-bindings",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
