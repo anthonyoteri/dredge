@@ -62,6 +62,9 @@ pub enum ApiError {
 
     #[error(transparent)]
     IOError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    SerializerError(#[from] serde_yaml::Error),
 }
 
 impl From<reqwest::header::ToStrError> for ApiError {
