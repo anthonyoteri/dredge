@@ -199,7 +199,7 @@ mod tests {
             cli.command,
             Commands::Show {
                 image: String::from("foo"),
-                tag: None
+                tag: None,
             }
         );
     }

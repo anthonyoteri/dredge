@@ -16,8 +16,9 @@
 
 #![deny(clippy::pedantic)]
 
-use clap::Parser;
 use std::io::{self, Write};
+
+use clap::Parser;
 use url::Url;
 
 use crate::cli::Cli;

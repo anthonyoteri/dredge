@@ -163,9 +163,9 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use http::header::HeaderValue;
+
+    use super::*;
 
     /// Test parsing a valid RFC5988 header value.
     ///
