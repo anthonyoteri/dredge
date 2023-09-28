@@ -29,6 +29,8 @@ jobs:
     name: Release assets
     needs: create_release
     runs-on: ${{ matrix.config.os }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         config:
