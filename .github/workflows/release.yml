@@ -53,18 +53,23 @@ jobs:
         run: cargo build --release
 
       - name: Upload release assets
+        if: matrix.config.os != 'windows-latest'
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          # This is how it will be named on the release page. Put hatever name
-          # you like, remember that they need to be different for each platform.
-          # You can choose any build matrix parameters. For Rust I use the
-          # target triple.
-          asset_name: dredge-${{ matrix.config.os }}
-          # The path to the file you want to upload.
+          asset_name: ${{ matrix.config.os }}/dredge
           asset_path: ./target/release/dredge
-          # probably you will need to change it, but most likely you are
-          # uploading a binary file
+          asset_content_type: application/octet-stream
+
+      - name: Upload release assets (Windows)
+        if: matrix.config.os == 'windows-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_name: ${{ matrix.config.os }}/dredge.exe
+          asset_path: ./target/release/dredge.exe
           asset_content_type: application/octet-stream
