@@ -16,14 +16,7 @@ jobs:
     steps:
       - name: Create release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+        uses: ncipollo/release-action@v1
 
   build-docs:
     name: Build documentation
@@ -60,7 +53,7 @@ jobs:
           dredge
 
       - name: Upload documentation assets
-        uses: actions/upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -112,7 +105,7 @@ jobs:
           dredge${{ matrix.config.ext }}
 
       - name: Upload release assets
-        uses: actions/upload-release-asset@v1
+        uses: shogo82148/actions-upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
