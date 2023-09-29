@@ -39,7 +39,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          components: rustdoc
+          components: rust-docs
 
       - name: Cache build dependencies
         uses: Swatinem/rust-cache@v2
