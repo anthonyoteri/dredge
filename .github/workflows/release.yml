@@ -20,9 +20,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          allowUpdates: true
           tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
+          release_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
 
@@ -62,7 +61,7 @@ jobs:
       - name: Create release assets
         run: |
           tar --directory target/release \
-          -cf Dredge-${{ github.ref }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz \
+          -cf Dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz \
           dredge*
 
       - name: Upload release assets
@@ -71,6 +70,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_name: Dredge-${{ github.ref }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
-          asset_path: ./target/release/Dredge-${{ github.ref }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
+          asset_name: Dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
+          asset_path: ./target/release/Dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
           asset_content_type: application/gzip
