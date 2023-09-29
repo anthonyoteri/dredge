@@ -14,10 +14,13 @@
  *    limitations under the License.
  */
 
+use http::header;
 use serde::Deserialize;
 use url::Url;
 
 use crate::error::ApiError;
+
+const MANIFEST_V2: &str = "application/vnd.docker.distribution.manifest.v2+json";
 
 /// Iterate over a paginated result set, collecting and returning the response
 /// set.
@@ -48,8 +51,13 @@ pub async fn fetch_paginated<T: for<'de> Deserialize<'de>>(
         let url = origin.join(&next_path)?;
 
         let resp = reqwest::get(url).await?;
+        parse_response_status(&resp)?;
+
         let headers = resp.headers().clone();
-        responses.push(resp.json().await?);
+
+        if let Ok(json) = resp.json().await {
+            responses.push(json);
+        }
 
         if let Some(p) = parse_rfc5988(headers.get(http::header::LINK))? {
             next_path = p;
@@ -126,7 +134,7 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
     log::trace!("parse_response_status(response: {response:?})");
 
     match response.status() {
-        http::StatusCode::OK => {
+        http::StatusCode::OK | http::StatusCode::ACCEPTED => {
             let headers = response.headers();
             if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
                 if header_value.to_str()? == "registry/2.0" {
@@ -140,6 +148,7 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
                 ))
             }
         }
+        http::StatusCode::METHOD_NOT_ALLOWED => Err(ApiError::MethodNotAllowed),
         http::StatusCode::UNAUTHORIZED => {
             let headers = response.headers();
             if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
@@ -155,10 +164,37 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
             }
         }
         http::StatusCode::NOT_FOUND => Err(ApiError::NotFound),
-        _ => Err(ApiError::UnexpectedResponse(
-            "Undocumented status code".into(),
-        )),
+        e => Err(ApiError::UnexpectedResponse(format!(
+            "Undocumented status code: {e:?}"
+        ))),
     }
+}
+
+/// Fetch the V2 Registry Digest for the specific manifest referenced in the
+/// provided `url`.
+///
+/// # Errors:
+///
+/// This will return an `ApiError` if there is a problem fetching the manifest
+/// headers.
+pub async fn get_digest(client: &reqwest::Client, url: &Url) -> Result<String, ApiError> {
+    log::trace!("get_manifest(client: {client:?}, url: {url}");
+    let resp = client
+        .head(url.as_ref())
+        .header(header::ACCEPT, MANIFEST_V2)
+        .send()
+        .await?;
+    parse_response_status(&resp)?;
+
+    let headers = resp.headers();
+    Ok(String::from(
+        headers
+            .get("docker-content-digest")
+            .ok_or(ApiError::UnexpectedResponse(String::from(
+                "Missing docker-content-digest header",
+            )))?
+            .to_str()?,
+    ))
 }
 
 #[cfg(test)]
@@ -200,5 +236,49 @@ mod tests {
 
         // Assert that the function returned the expected URL as Some(String)
         assert_eq!(result, None);
+    }
+
+    /// Validates the happy path for the get_digest function
+    ///
+    /// This tests starts up a mock server, and the client makes a request for
+    /// the digest with the proper headers set.  The test then validates that
+    /// the correct digest is returned and that the mock server had the expected
+    /// interactions.
+    #[async_std::test]
+    async fn test_get_digest() -> Result<(), ApiError> {
+        let mut server = mockito::Server::new_async().await;
+        let path = "/v2/foo/manifests/latest";
+
+        // Mock the HTTP response for the Docker Registry API
+        let registry_url = Url::parse(&server.url()).expect("Failed to parse registry URL");
+        let mock_response = server
+            .mock("HEAD", path)
+            .match_header(http::header::ACCEPT.as_str(), MANIFEST_V2)
+            .with_status(http::status::StatusCode::OK.as_u16().into())
+            .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
+            .with_header(
+                "docker-content-digest",
+                "sha256:0259571889ac87efbfca5b79a0abe9baf626d058ec5f9a5744bace2229d9ed50",
+            )
+            .with_header(
+                "etag",
+                "sha256:0259571889ac87efbfca5b79a0abe9baf626d058ec5f9a5744bace2229d9ed50",
+            )
+            .create();
+
+        let url = registry_url.join(path)?;
+        let client = reqwest::Client::new();
+        let result = get_digest(&client, &url).await;
+
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
+        assert_eq!(
+            result.unwrap(),
+            *"sha256:0259571889ac87efbfca5b79a0abe9baf626d058ec5f9a5744bace2229d9ed50"
+        );
+
+        mock_response.assert();
+
+        Ok(())
     }
 }

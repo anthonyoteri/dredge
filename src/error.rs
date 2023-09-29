@@ -68,6 +68,9 @@ pub enum ApiError {
 
     #[error(transparent)]
     SerializerError(#[from] serde_yaml::Error),
+
+    #[error("Method not allowed")]
+    MethodNotAllowed,
 }
 
 impl From<reqwest::header::ToStrError> for ApiError {
