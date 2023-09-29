@@ -25,6 +25,50 @@ jobs:
           draft: false
           prerelease: false
 
+  build-docs:
+    name: Build documentation
+    needs: create_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustdoc
+
+      - name: Cache build dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo doc
+        run:
+          cargo doc
+          --bin=dredge
+          --no-deps
+          --all-features
+          --document-private-items
+          --release
+
+      - name: Archive the Docs
+        run:
+          tar --directory target/doc -czf
+          dredge-$(( github.ref_name))-docs.tar.gz
+          dredge
+
+      - name: Upload documentation assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_name: dredge-${{ github.ref_name }}-docs.tar.gz
+          asset_path: dredge-${{ github.ref_name }}-docs.tar.gz
+          asset_content_type: application/gzip
+
   release_assets:
     name: Release assets
     needs: create_release
