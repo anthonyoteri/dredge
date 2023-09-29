@@ -1,6 +1,6 @@
 [package]
 name = "dredge"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Anthony Oteri"]
 description = "A Command Line tool for interracting with the Docker Registry API"
