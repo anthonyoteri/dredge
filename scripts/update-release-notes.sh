@@ -18,4 +18,11 @@
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-/usr/bin/cat "${REPO_ROOT}/docs/release-notes-template.md" $(/usr/bin/ls "${REPO_ROOT}/docs/changelog*.md" 2>/dev/null | true | sort -rn) | tee "${REPO_ROOT}/RELEASE_NOTES.md"
+RELEASE_NOTES="${REPO_ROOT}/RELEASE_NOTES.md"
+/usr/bin/cat "${REPO_ROOT}/docs/release-notes-template.md" | tee "${RELEASE_NOTES}"
+
+for note in $(/usr/bin/find "${REPO_ROOT}/docs" -name "changelog*.md" -print | sort -rn); do
+  /usr/bin/cat "${note}" | tee -a "${RELEASE_NOTES}"
+  echo "" | tee -a "${RELEASE_NOTES}"
+  echo "" | tee -a "${RELEASE_NOTES}"
+done
