@@ -62,9 +62,9 @@ jobs:
         run: cargo build --release
 
       - name: Create release assets
-        run: |
-          tar --directory target/release \
-          -cf Dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz \
+        run:
+          tar --directory target/release -czf
+          dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
           dredge${{ matrix.config.ext }}
 
       - name: Upload release assets
@@ -73,6 +73,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_name: Dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
-          asset_path: Dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
+          asset_name: dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
+          asset_path: dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
           asset_content_type: application/gzip
