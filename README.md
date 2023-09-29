@@ -32,6 +32,7 @@ Options:
   -V, --version
           Print version
 ```
+
 ### Checking the API Version
 
 Perform a simple API Version check towards the registry endpoint
@@ -86,6 +87,15 @@ Options:
 ### Deleteing a tagged image
 
 Delete a tagged image from the registry
+
+Note! This requires that the registry has storage delete rights enabled. For
+example, when creating the registry, setting the environment variable
+`REGISTRY_STORAGE_DELETE_ENABLED=true` to enable that feature. If that is not
+enabled, a `MethodNotAllowed` error will be returned.
+
+Note! This will only remove the tag from the registry, it will not remove
+orphaned digests. For that, the garbage collector on the registry service must
+be run separately.
 
 ```shell
 Usage: dredge <REGISTRY> delete <IMAGE> <TAG>

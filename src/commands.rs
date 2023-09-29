@@ -128,6 +128,8 @@ pub async fn show_handler(
     let url = registry_url.join(&path)?;
 
     let resp = reqwest::get(url).await?;
+    api::parse_response_status(&resp)?;
+
     let headers = resp.headers();
     let digest: String = String::from(
         headers
@@ -173,7 +175,17 @@ pub async fn delete_handler(
     tag: &str,
 ) -> Result<(), ApiError> {
     log::trace!("delete_handler(registry_url: {registry_url:?}, image: {image}, tag: {tag})");
-    todo!()
+
+    let client = reqwest::Client::new();
+    let url = registry_url.join(&format!("/v2/{image}/manifests/{tag}"))?;
+    let digest = api::get_digest(&client, &url).await?;
+
+    log::debug!("Deleting digest {digest}");
+    let url = registry_url.join(&format!("/v2/{image}/manifests/{digest}"))?;
+    let resp = client.delete(url).send().await?;
+    api::parse_response_status(&resp)?;
+
+    Ok(())
 }
 
 // Path to the Docker Registry APIs "api version check" endpoint.
@@ -190,8 +202,8 @@ pub async fn check_handler(buf: &mut dyn Write, registry_url: &Url) -> Result<()
     let path = "/v2";
     let url = registry_url.join(path)?;
 
-    let response = reqwest::get(url).await?;
-    api::parse_response_status(&response)?;
+    let resp = reqwest::get(url).await?;
+    api::parse_response_status(&resp)?;
     writeln!(buf, "Ok")?;
     Ok(())
 }
@@ -222,12 +234,13 @@ mod tests {
             .mock("GET", path)
             .with_status(http::status::StatusCode::OK.as_u16().into())
             .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_body(r#"{"repositories": ["image1", "image2", "image3"]}"#)
             .create();
 
         let mut buf: Vec<u8> = Vec::new();
         let result = catalog_handler(&mut buf, &registry_url).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
         assert_eq!(String::from_utf8(buf).unwrap(), *"image1\nimage2\nimage3\n");
 
         mock_response.assert();
@@ -251,6 +264,7 @@ mod tests {
             .mock("GET", path)
             .with_status(http::status::StatusCode::OK.as_u16().into())
             .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_header(
                 http::header::LINK.as_str(),
                 &format!(r#"<{path2}>; rel=next"#),
@@ -262,12 +276,13 @@ mod tests {
             .mock("GET", path2)
             .with_status(http::status::StatusCode::OK.as_u16().into())
             .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_body(r#"{"repositories": ["image3"]}"#)
             .create();
 
         let mut buf: Vec<u8> = Vec::new();
         let result = catalog_handler(&mut buf, &registry_url).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
         assert_eq!(String::from_utf8(buf).unwrap(), *"image1\nimage2\nimage3\n");
 
         mock_response.assert();
@@ -290,12 +305,13 @@ mod tests {
             .mock("GET", path)
             .with_status(http::status::StatusCode::OK.as_u16().into())
             .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_body(r#"{"tags": ["tag1", "tag2", "tag3"]}"#)
             .create();
 
         let mut buf: Vec<u8> = Vec::new();
         let result = tags_handler(&mut buf, &registry_url, "some_image").await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
         assert_eq!(String::from_utf8(buf).unwrap(), *"tag1\ntag2\ntag3\n");
 
         mock_response.assert();
@@ -320,6 +336,7 @@ mod tests {
             .mock("GET", path)
             .with_status(http::status::StatusCode::OK.as_u16().into())
             .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_header(
                 http::header::LINK.as_str(),
                 &format!(r#"<{path2}>; rel=next"#),
@@ -331,12 +348,13 @@ mod tests {
             .mock("GET", path2)
             .with_status(http::status::StatusCode::OK.as_u16().into())
             .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_body(r#"{"tags": ["tag3"]}"#)
             .create();
 
         let mut buf: Vec<u8> = Vec::new();
         let result = tags_handler(&mut buf, &registry_url, "some_image").await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
         assert_eq!(String::from_utf8(buf).unwrap(), *"tag1\ntag2\ntag3\n");
 
         mock_response.assert();
@@ -364,7 +382,7 @@ mod tests {
 
         let mut buf: Vec<u8> = Vec::new();
         let result = check_handler(&mut buf, &registry_url).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
         assert_eq!(String::from_utf8(buf).unwrap(), *"Ok\n");
 
         mock_response.assert();
@@ -492,6 +510,7 @@ mod tests {
             .mock("GET", path)
             .with_status(http::status::StatusCode::OK.as_u16().into())
             .with_header(http::header::CONTENT_TYPE.as_str(), "application/json")
+            .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_header(
                 "docker-content-digest",
                 "sha256:0259571889ac87efbfca5b79a0abe9baf626d058ec5f9a5744bace2229d9ed50",
@@ -517,7 +536,7 @@ mod tests {
         etag: sha256:0259571889ac87efbfca5b79a0abe9baf626d058ec5f9a5744bace2229d9ed50\n"
         };
 
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
         assert_eq!(String::from_utf8(buf).unwrap(), *expected_body);
 
         mock_response.assert();
