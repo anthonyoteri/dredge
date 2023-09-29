@@ -23,7 +23,7 @@ categories = [
 [dependencies]
 async-std = { version = "1.12.0", features = ["async-attributes", "attributes", "tokio1"] }
 clap = { version = "4.4.3", features = ["derive", "env", "wrap_help"] }
-femme = "2.2.1"
+simple_logger = { version = "4.2.0", features = ["timestamps", "colors", "stderr"] }
 http = "0.2.9"
 indoc = "2.0.4"
 log = "0.4.20"

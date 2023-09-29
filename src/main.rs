@@ -19,6 +19,7 @@
 use std::io::{self, Write};
 
 use clap::Parser;
+use simple_logger::SimpleLogger;
 use url::Url;
 
 use crate::cli::Cli;
@@ -62,7 +63,12 @@ async fn main() -> Result<(), DredgeError> {
 
     // -- Initialize logging
     let log_level = args.log_level;
-    femme::with_level(log::LevelFilter::from(log_level));
+    SimpleLogger::new()
+        .with_colors(true)
+        .with_utc_timestamps()
+        .with_level(log_level.into())
+        .env()
+        .init()?;
 
     // -- Parse the given <REGISTRY> argument into a complete URL
     let registry_url: Url = parse_registry_arg(&args.registry)?;
