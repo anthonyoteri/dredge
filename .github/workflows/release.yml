@@ -37,12 +37,15 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x86_64
+            ext: ''
           - os: macos-latest
             platform: macos
             arch: x86_64
+            ext: ''
           - os: windows-latest
             platform: win
             arch: x86_64
+            ext: .exe
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,7 +65,7 @@ jobs:
         run: |
           tar --directory target/release \
           -cf Dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz \
-          dredge*
+          dredge${{ matrix.config.ext }}
 
       - name: Upload release assets
         uses: actions/upload-release-asset@v1
