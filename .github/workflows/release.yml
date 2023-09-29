@@ -56,7 +56,7 @@ jobs:
       - name: Archive the Docs
         run:
           tar --directory target/doc -czf
-          dredge-$(( github.ref_name))-docs.tar.gz
+          dredge-${{ github.ref_name}}-docs.tar.gz
           dredge
 
       - name: Upload documentation assets
