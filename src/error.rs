@@ -32,6 +32,9 @@ pub enum DredgeError {
 
     #[error(transparent)]
     IOError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    LoggerError(#[from] log::SetLoggerError),
 }
 
 /// An error related to the communication with the registry API.
