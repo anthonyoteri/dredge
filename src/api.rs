@@ -207,7 +207,7 @@ mod tests {
     ///
     /// Attempt to parse a valid RFC5988 header value, and ensure that the
     /// parsed URL was returned as expected.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_parse_rfc5988_valid() {
         // Mock a valid RFC5988 header value
         let valid_header_value =
@@ -225,7 +225,7 @@ mod tests {
     ///
     /// Attempt to parse an invalid string as RFC5988, ensuring that the `None`
     /// variant is returned.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_parse_rfc5988_invalid() {
         // Mock a valid RFC5988 header value
         let invalid_header_value = HeaderValue::from_str(r#"invalid header value"#)
@@ -244,7 +244,7 @@ mod tests {
     /// the digest with the proper headers set.  The test then validates that
     /// the correct digest is returned and that the mock server had the expected
     /// interactions.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_get_digest() -> Result<(), ApiError> {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2/foo/manifests/latest";

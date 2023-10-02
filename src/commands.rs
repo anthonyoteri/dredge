@@ -224,7 +224,7 @@ mod tests {
     /// This test spins up a mock server, and makes a request to the catalog
     /// endpoint.  It checks that the handler both called the request the
     /// expected number of times, and did not return an error.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_catalog_handler() {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2/_catalog";
@@ -253,7 +253,7 @@ mod tests {
     /// should follow, resulting in the combined list.  It checks that the
     /// handler both called the request the expected number of times, and did
     /// not return an error.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_catalog_handler_with_pagination() {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2/_catalog";
@@ -294,7 +294,7 @@ mod tests {
     /// This test spins up a mock server, and makes a request to the tags
     /// endpoint.  It checks that the handler both called the request the
     /// expected number of times, and did not return an error.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_tags_handler() {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2/some_image/tags/list";
@@ -324,7 +324,7 @@ mod tests {
     /// should follow, resulting in the combined list.  It checks that the
     /// handler both called the request the expected number of times, and did
     /// not return an error.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_tags_handler_with_pagination() {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2/some_image/tags/list";
@@ -366,7 +366,7 @@ mod tests {
     /// This test spins up a mock server, and makes a request to the check
     /// endpoint.  It checks that the handler both called the request the
     /// expected number of times, and did not return an error.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_check_handler() {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2";
@@ -392,7 +392,7 @@ mod tests {
     ///
     /// This validates that if the "Docker-Distribution-API-Version" header
     /// is missing in the response, the appropriate error is returned.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_check_handler_missing_api_version() -> Result<(), Box<dyn Error>> {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2";
@@ -425,7 +425,7 @@ mod tests {
     /// This validates that if the "Docker-Distribution-API-Version" header
     /// is present in the response but contains an unexpected value, the
     /// appropriate error is returned.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_check_handler_invalid_api_version() -> Result<(), Box<dyn Error>> {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2";
@@ -459,7 +459,7 @@ mod tests {
     /// This test spins up a mock server, and makes a request to the image
     /// manifests endpoint.  It checks that the handler both called the request
     /// the expected number of times, and did not return an error.
-    #[async_std::test]
+    #[tokio::test]
     async fn test_show_handler() {
         let mut server = mockito::Server::new_async().await;
         let path = "/v2/foo/manifests/latest";

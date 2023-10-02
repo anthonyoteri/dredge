@@ -57,7 +57,7 @@ fn parse_registry_arg(host: &str) -> Result<Url, DredgeError> {
     Url::parse(&host).or(Err(DredgeError::RegistryUrlError(host.to_string())))
 }
 
-#[async_std::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), DredgeError> {
     let args = Cli::parse();
 
