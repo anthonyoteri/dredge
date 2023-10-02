@@ -1,5 +1,5 @@
 [package]
-name = "dredge"
+name = "dredge-tool"
 version = "0.2.0"
 edition = "2021"
 authors = ["Anthony Oteri"]
@@ -17,6 +17,11 @@ categories = [
     "command-line-utilities",
     "api-bindings",
 ]
+
+
+[[bin]]
+path = "src/main.rs"
+name = "dredge"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
