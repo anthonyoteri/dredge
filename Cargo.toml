@@ -7,7 +7,7 @@ description = "A Command Line tool for interracting with the Docker Registry API
 readme = "README.md"
 repository = "https://github.com/anthonyoteri/dredge"
 rust-version = "1.72"
-license-file = "LICENSE"
+license = "MIT OR Apache-2.0"
 keywords = [
     "docker",
     "registry",
