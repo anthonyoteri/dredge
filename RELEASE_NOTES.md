@@ -1,11 +1,20 @@
 # Dredge Release Notes
 
+## Legal
+
+As of version 1.1.0, this software license has been changed from Apache-2.0
+to a dual-licensed Apache-2.0 OR MIT license.
+
 ## Known Issues
 
 * Docker authentication is not currently supported, and attempts to query a
   registry which requires authentication will fail.
 
 ## Changelog
+- v1.1.0
+
+  - Change License by Anthony Oteri 0e4219b
+
 - v1.0.0
 
   - Rename project to dredge-tool by Anthony Oteri b60d433
