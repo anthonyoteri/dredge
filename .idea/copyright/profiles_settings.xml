@@ -1,7 +1,7 @@
 <component name="CopyrightManager">
   <settings>
     <module2copyright>
-      <element module="Project Files" copyright="Apache License (personal)" />
+      <element module="Project Files" copyright="MIT OR Apache-2.0 (personal)" />
     </module2copyright>
   </settings>
 </component>
