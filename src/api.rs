@@ -7,7 +7,9 @@
  * copied, modified, or distributed except according to those terms.
  */
 
-use http::header;
+use reqwest::header;
+use reqwest::header::HeaderValue;
+use reqwest::StatusCode;
 use serde::Deserialize;
 use url::Url;
 
@@ -52,7 +54,7 @@ pub async fn fetch_paginated<T: for<'de> Deserialize<'de>>(
             responses.push(json);
         }
 
-        if let Some(p) = parse_rfc5988(headers.get(http::header::LINK))? {
+        if let Some(p) = parse_rfc5988(headers.get(header::LINK))? {
             next_path = p;
         } else {
             break;
@@ -73,7 +75,7 @@ pub async fn fetch_paginated<T: for<'de> Deserialize<'de>>(
 ///
 /// Returns and `ApiError` if there is a problem parsing contents of the
 /// supplied header value.
-fn parse_rfc5988(header_value: Option<&http::HeaderValue>) -> Result<Option<String>, ApiError> {
+fn parse_rfc5988(header_value: Option<&HeaderValue>) -> Result<Option<String>, ApiError> {
     log::trace!("parse_rfc5988(header_value: {header_value:?})");
 
     if let Some(link_value) = header_value {
@@ -127,7 +129,7 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
     log::trace!("parse_response_status(response: {response:?})");
 
     match response.status() {
-        http::StatusCode::OK | http::StatusCode::ACCEPTED => {
+        StatusCode::OK | StatusCode::ACCEPTED => {
             let headers = response.headers();
             if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
                 if header_value.to_str()? == "registry/2.0" {
@@ -141,8 +143,8 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
                 ))
             }
         }
-        http::StatusCode::METHOD_NOT_ALLOWED => Err(ApiError::MethodNotAllowed),
-        http::StatusCode::UNAUTHORIZED => {
+        StatusCode::METHOD_NOT_ALLOWED => Err(ApiError::MethodNotAllowed),
+        StatusCode::UNAUTHORIZED => {
             let headers = response.headers();
             if let Some(header_value) = headers.get("Docker-Distribution-API-Version") {
                 if header_value.to_str()? == "registry/2.0" {
@@ -156,7 +158,7 @@ pub fn parse_response_status(response: &reqwest::Response) -> Result<(), ApiErro
                 ))
             }
         }
-        http::StatusCode::NOT_FOUND => Err(ApiError::NotFound),
+        StatusCode::NOT_FOUND => Err(ApiError::NotFound),
         e => Err(ApiError::UnexpectedResponse(format!(
             "Undocumented status code: {e:?}"
         ))),
@@ -192,8 +194,6 @@ pub async fn get_digest(client: &reqwest::Client, url: &Url) -> Result<String, A
 
 #[cfg(test)]
 mod tests {
-    use http::header::HeaderValue;
-
     use super::*;
 
     /// Test parsing a valid RFC5988 header value.
