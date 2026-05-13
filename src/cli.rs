@@ -7,25 +7,34 @@
  * copied, modified, or distributed except according to those terms.
  */
 
-#![allow(unused_imports)]
-
-use std::ffi::OsString;
-use std::path::PathBuf;
-
-use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
 
-/// Dredge is a command line tool for working with the Docker Registry
-/// V2 API.
+/// Command-line interface for `dredge`.
+///
+/// `dredge` is a tool for interacting with Docker Registry HTTP API V2
+/// endpoints.  It supports listing repositories and tags, inspecting image
+/// manifests, deleting tagged images, and verifying registry API
+/// compatibility.
+///
+/// The `<REGISTRY>` positional argument accepts a bare hostname
+/// (`registry.example.com`), a host-and-port pair
+/// (`registry.example.com:5000`), or a full URL with an explicit scheme
+/// (`https://registry.example.com` or `http://registry.example.com`).
+/// When no scheme is given, `https://` is assumed.
 #[derive(Debug, Parser, PartialEq, Eq)]
 #[command(name = "dredge", version, author)]
 #[command(about, long_about)]
 pub(crate) struct Cli {
+    /// The subcommand to execute.
     #[command(subcommand)]
     pub command: Commands,
 
+    /// Minimum log level for messages written to stderr.
+    ///
+    /// Possible values: `trace`, `debug`, `info`, `warn`, `error`, `off`.
+    /// Defaults to `info`.
     #[arg(
     long = "log-level",
     require_equals = true,
@@ -37,17 +46,32 @@ pub(crate) struct Cli {
     )]
     pub log_level: LogLevel,
 
-    /// The host or host:port or full base URL of the Docker Registry
+    /// The Docker Registry endpoint.
+    ///
+    /// Accepts a hostname (`registry.example.com`), host and port
+    /// (`registry.example.com:5000`), or a full URL with an explicit scheme
+    /// (`https://registry.example.com` or `http://registry.example.com`).
+    /// The `https://` scheme is assumed when no scheme is provided.
     pub registry: String,
 }
 
+/// Log verbosity level for the `--log-level` CLI option.
+///
+/// Maps directly to the corresponding [`log::LevelFilter`] variants.  Use
+/// `Off` to suppress all log output.
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LogLevel {
+    /// Extremely verbose output, including internal trace points.
     Trace,
+    /// Verbose output useful for debugging.
     Debug,
+    /// Informational messages (default).
     Info,
+    /// Warnings about potentially unexpected conditions.
     Warn,
+    /// Only error messages.
     Error,
+    /// Suppress all log output.
     Off,
 }
 
@@ -64,28 +88,94 @@ impl From<LogLevel> for log::LevelFilter {
     }
 }
 
+/// Available `dredge` subcommands.
 #[derive(Debug, Subcommand, PartialEq, Eq)]
 pub enum Commands {
-    /// Fetch the list of available repositories from the catalog.
+    /// List all repositories available in the registry catalog.
+    ///
+    /// Queries the `/v2/_catalog` endpoint and prints one repository name per
+    /// line.  Paginated responses are followed automatically.
+    ///
+    /// **Example:**
+    /// ```text
+    /// dredge registry.example.com catalog
+    /// ```
     Catalog,
 
-    /// Fetch the list of tags for a given image.
+    /// List all tags published for an image.
+    ///
+    /// Queries the `/v2/<NAME>/tags/list` endpoint and prints one tag per
+    /// line.  Paginated responses are followed automatically.
+    ///
+    /// **Example:**
+    /// ```text
+    /// dredge registry.example.com tags myorg/backend
+    /// ```
     #[command(arg_required_else_help = true)]
-    Tags { name: String },
+    Tags {
+        /// The repository name whose tags should be listed
+        /// (e.g. `myorg/backend`).
+        name: String,
+    },
 
-    /// Show detailed information about a particular image.
+    /// Show detailed manifest information for a tagged image.
+    ///
+    /// Queries the `/v2/<IMAGE>/manifests/<TAG>` endpoint and prints the
+    /// parsed manifest as YAML, including the image name, tag, architecture,
+    /// filesystem layers, content digest, and `ETag`.
+    ///
+    /// When `[TAG]` is omitted, `latest` is used.
+    ///
+    /// **Examples:**
+    /// ```text
+    /// dredge registry.example.com show myorg/backend
+    /// dredge registry.example.com show myorg/backend v2.0.0
+    /// ```
     #[command(arg_required_else_help = true)]
     Show {
+        /// The repository name of the image to inspect (e.g. `myorg/backend`).
         image: String,
+        /// The tag to inspect.  Defaults to `latest` when omitted.
         #[arg(default_missing_value = "latest")]
         tag: Option<String>,
     },
 
     /// Delete a tagged image from the registry.
+    ///
+    /// Resolves the tag to its content digest via a `HEAD` request, then
+    /// sends a `DELETE` request for that digest to the
+    /// `/v2/<IMAGE>/manifests/<DIGEST>` endpoint.
+    ///
+    /// Requires the registry to have storage deletion enabled (set
+    /// `REGISTRY_STORAGE_DELETE_ENABLED=true` on the registry container).
+    /// If deletion is not enabled the registry returns a
+    /// `405 Method Not Allowed` response.
+    ///
+    /// Only the manifest is removed; unreferenced layer blobs remain on disk
+    /// until the registry garbage collector is run.
+    ///
+    /// **Example:**
+    /// ```text
+    /// dredge registry.example.com delete myorg/backend v1.0.0
+    /// ```
     #[command(arg_required_else_help = true)]
-    Delete { image: String, tag: String },
+    Delete {
+        /// The repository name of the image to delete (e.g. `myorg/backend`).
+        image: String,
+        /// The tag to delete (e.g. `v1.0.0`).
+        tag: String,
+    },
 
-    /// Perform a simple version check towards the Docker Registry API
+    /// Verify that the registry endpoint implements Docker Distribution API v2.
+    ///
+    /// Sends a `GET` request to `/v2` and checks that the response contains a
+    /// `Docker-Distribution-API-Version: registry/2.0` header.  Prints `Ok`
+    /// on success.
+    ///
+    /// **Example:**
+    /// ```text
+    /// dredge registry.example.com check
+    /// ```
     Check,
 }
 

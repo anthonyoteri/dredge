@@ -24,30 +24,45 @@ pub(crate) mod cli;
 mod commands;
 mod error;
 
-/// Name of "latest" tag
+/// The default image tag used when no tag is specified by the caller.
 const LATEST: &str = "latest";
 
-/// Parse the "<REGISTRY>" argument into a complete  Docker Registry URL.
+/// Parse the `<REGISTRY>` CLI argument into a complete Docker Registry [`Url`].
 ///
-/// This prepends the HTTPS scheme and converts the given string to a `Url`
-/// instance.
+/// Accepts a bare hostname (`registry.example.com`), a host-and-port pair
+/// (`registry.example.com:5000`), or a full URL
+/// (`https://registry.example.com:5000`).  When no URL scheme is present,
+/// `https://` is prepended automatically before parsing.
 ///
-/// If the given `host` value is already a valid URL, then it will be returned
-/// as-is.
+/// # Errors
 ///
-/// # Errors:
+/// Returns [`DredgeError::RegistryUrlError`] containing the attempted URL
+/// string if it cannot be parsed as a valid URL after the scheme is prepended.
 ///
-/// If there is a problem parsing the resulting string as a valid URL, a
-/// `DredgeError::RegistryUrlError` will be returned.
+/// # Examples
+///
+/// ```rust,ignore
+/// // Bare hostname — HTTPS is assumed
+/// let url = parse_registry_arg("registry.example.com").unwrap();
+/// assert_eq!(url.scheme(), "https");
+///
+/// // Host with port
+/// let url = parse_registry_arg("registry.example.com:5000").unwrap();
+/// assert_eq!(url.port(), Some(5000));
+///
+/// // Full URL returned as-is
+/// let url = parse_registry_arg("https://registry.example.com").unwrap();
+/// assert_eq!(url.as_str(), "https://registry.example.com/");
+/// ```
 fn parse_registry_arg(host: &str) -> Result<Url, DredgeError> {
-    log::trace!("make_registry_url(host: {host})");
+    log::trace!("parse_registry_arg(host: {host})");
 
     let mut host = String::from(host);
     if !host.starts_with("http://") && !host.starts_with("https://") {
         host = format!("https://{host}");
     }
 
-    Url::parse(&host).or(Err(DredgeError::RegistryUrlError(host.to_string())))
+    Url::parse(&host).or(Err(DredgeError::RegistryUrlError(host.clone())))
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -76,7 +91,7 @@ async fn main() -> Result<(), DredgeError> {
                 &mut buf,
                 &registry_url,
                 &image,
-                &tag.unwrap_or(LATEST.to_string()),
+                tag.as_deref().unwrap_or(LATEST),
             )
             .await?;
         }
@@ -155,5 +170,32 @@ mod tests {
             Err(DredgeError::RegistryUrlError(_)) => {} // Expected error variant,
             _ => panic!("Expected RegistryUrlError, got a different error"),
         }
+    }
+
+    /// Test that an HTTP (non-HTTPS) URL is returned as-is without prepending
+    /// the HTTPS scheme.
+    #[test]
+    fn test_parse_registry_arg_http_url() {
+        let host = "http://example.com/registry";
+        let result = parse_registry_arg(host);
+
+        assert!(result.is_ok());
+        let url = result.unwrap();
+        assert_eq!(url.scheme(), "http");
+        assert_eq!(url.host_str(), Some("example.com"));
+        assert_eq!(url.path(), "/registry");
+    }
+
+    /// Test that a trailing slash in the registry argument is preserved.
+    #[test]
+    fn test_parse_registry_arg_trailing_slash() {
+        let host = "example.com/registry/";
+        let result = parse_registry_arg(host);
+
+        assert!(result.is_ok());
+        let url = result.unwrap();
+        assert_eq!(url.scheme(), "https");
+        assert_eq!(url.host_str(), Some("example.com"));
+        assert_eq!(url.path(), "/registry/");
     }
 }
