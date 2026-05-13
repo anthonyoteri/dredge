@@ -25,9 +25,6 @@ jobs:
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-
       - name: Build
         run: cargo build --all-targets
 
@@ -69,9 +66,9 @@ jobs:
         uses: cocogitto/cocogitto-action@v3
         with:
           check: true
-          # Only check commits reachable from the latest tag so that old
-          # non-conventional commits in history do not fail the check.
-          from_latest_tag: true
+          # Only check commits since conventional commits were adopted.
+          # 9b602f7 is the last commit before the first conventional commit.
+          from: 9b602f70a60e5651771ae40a934a7d417d9e1214
 
   deny:
     name: Cargo deny
@@ -84,14 +81,14 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@v2
 
   msrv:
-    name: MSRV (1.80)
+    name: MSRV (1.88)
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust 1.80
-        uses: dtolnay/rust-toolchain@1.80
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@1.88
 
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
