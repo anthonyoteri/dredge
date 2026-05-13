@@ -31,7 +31,7 @@ simple_logger = { version = "5.2", features = ["timestamps", "colors", "stderr"]
 http = "1.4"
 indoc = "2.0"
 log = "0.4"
-reqwest = { version = "0.12", features = ["json", "gzip", "multipart", "native-tls-vendored"] }
+reqwest = { version = "0.13", features = ["json", "gzip", "multipart", "native-tls-vendored"] }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
 url = { version = "2.5", features = ["serde"] }
