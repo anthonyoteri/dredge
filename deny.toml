@@ -1,0 +1,44 @@
+# cargo-deny configuration
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# Check all targets, not just the host.
+all-features = true
+
+# ---------------------------------------------------------------------------
+# Licenses
+# ---------------------------------------------------------------------------
+[licenses]
+# Minimum confidence threshold for license detection (0.0 – 1.0).
+confidence-threshold = 0.8
+
+# Licenses we explicitly permit across the entire dependency tree.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Unicode-3.0",
+]
+
+# ---------------------------------------------------------------------------
+# Security advisories
+# ---------------------------------------------------------------------------
+[advisories]
+# Deny crates with known security vulnerabilities.
+version = 2
+
+# ---------------------------------------------------------------------------
+# Crate bans
+# ---------------------------------------------------------------------------
+[bans]
+# Deny multiple versions of the same crate (can cause bloat and confusion).
+multiple-versions = "warn"
+# Deny wildcard dependencies.
+wildcards = "deny"
+
+# ---------------------------------------------------------------------------
+# Crate sources
+# ---------------------------------------------------------------------------
+[sources]
+# Only allow crates from crates.io.
+unknown-registry = "deny"
+unknown-git = "deny"
