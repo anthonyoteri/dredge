@@ -61,14 +61,16 @@ jobs:
         with:
           # Full history is required for cog check to validate all commits.
           fetch-depth: 0
+          # On PRs check the PR HEAD, not the merge commit.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Check conventional commits
-        uses: cocogitto/cocogitto-action@v3
+        uses: cocogitto/cocogitto-action@v4
         with:
-          check: true
+          command: check
           # Only check commits since conventional commits were adopted.
           # 9b602f7 is the last commit before the first conventional commit.
-          from: 9b602f70a60e5651771ae40a934a7d417d9e1214
+          args: 9b602f70a60e5651771ae40a934a7d417d9e1214..HEAD
 
   deny:
     name: Cargo deny
