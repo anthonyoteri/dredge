@@ -6,7 +6,7 @@ authors = ["Anthony Oteri"]
 description = "A command line tool for interacting with the Docker Registry API"
 readme = "README.md"
 repository = "https://github.com/anthonyoteri/dredge"
-rust-version = "1.80"
+rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 keywords = [
     "docker",
