@@ -3,113 +3,147 @@ name: Release
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
 
 jobs:
-  create_release:
-    name: Create release
+  # ---------------------------------------------------------------------------
+  # Gate: all CI checks must pass before we publish anything.
+  # ---------------------------------------------------------------------------
+  ci:
+    name: CI checks
+    uses: ./.github/workflows/ci.yml
+
+  # ---------------------------------------------------------------------------
+  # Publish to crates.io and create a GitHub release.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish
     runs-on: ubuntu-latest
+    needs: ci
     permissions:
       contents: write
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-      - name: Create release
-        id: create_release
-        uses: ncipollo/release-action@v1.21.0
 
-  build-docs:
-    name: Build documentation
-    needs: create_release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
         with:
-          toolchain: stable
-          components: rust-docs
+          fetch-depth: 0
 
-      - name: Cache build dependencies
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Run cargo doc
-        run:
-          cargo doc
-          --bin=dredge
-          --no-deps
-          --all-features
-          --document-private-items
-          --release
-
-      - name: Archive the Docs
-        run:
-          tar --directory target/doc -czf
-          dredge-${{ github.ref_name}}-docs.tar.gz
-          dredge
-
-      - name: Upload documentation assets
-        uses: shogo82148/actions-upload-release-asset@v1.10.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install cocogitto
+        uses: cocogitto/cocogitto-action@v3
         with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_name: dredge-${{ github.ref_name }}-docs.tar.gz
-          asset_path: dredge-${{ github.ref_name }}-docs.tar.gz
-          asset_content_type: application/gzip
+          check: false
 
-  release_assets:
-    name: Release assets
-    needs: create_release
-    runs-on: ${{ matrix.config.os }}
+      - name: Generate release notes for this tag
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Write release notes outside the repo so cargo publish does not
+          # see an untracked file and refuse to run.
+          cog changelog --at "$GITHUB_REF_NAME" > /tmp/release_notes.md || \
+            echo "No structured changelog available for $GITHUB_REF_NAME." > /tmp/release_notes.md
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish dredge-tool to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Create GitHub release
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file /tmp/release_notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Build release binaries and attach them to the GitHub release.
+  # Runs in parallel across platforms after the release is created.
+  # ---------------------------------------------------------------------------
+  build-binaries:
+    name: Build binary (${{ matrix.upload_name }})
+    needs: publish
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
+
     strategy:
+      fail-fast: false
       matrix:
-        config:
+        include:
           - os: ubuntu-latest
-            platform: linux
-            arch: x86_64
-            ext: ''
-          - os: macos-latest
-            platform: macos
-            arch: x86_64
-            ext: ''
-          - os: windows-latest
-            platform: win
-            arch: x86_64
-            ext: .exe
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            artifact: dredge
+            upload_name: dredge-linux-x86_64.tar.gz
+            target: x86_64-unknown-linux-musl
+            artifact_dir: target/x86_64-unknown-linux-musl/release
 
-      - name: Install Rust Toolchain
+          - os: macos-latest
+            artifact: dredge
+            upload_name: dredge-macos-aarch64.tar.gz
+            target: ""
+            artifact_dir: target/release
+
+          - os: macos-latest
+            artifact: dredge
+            upload_name: dredge-macos-x86_64.tar.gz
+            target: x86_64-apple-darwin
+            artifact_dir: target/x86_64-apple-darwin/release
+
+          - os: windows-latest
+            artifact: dredge.exe
+            upload_name: dredge-windows-x86_64.exe
+            target: ""
+            artifact_dir: target/release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          targets: ${{ matrix.target }}
 
-      - name: Cache build dependencies
+      - name: Install musl tools (Linux only)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get install -y musl-tools
+
+      - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Run cargo build
-        run: cargo build --release
+      - name: Build release binary
+        run: >
+          cargo build --release
+          ${{ matrix.target != '' && format('--target {0}', matrix.target) || '' }}
 
-      - name: Create release assets
-        run:
-          tar --directory target/release -czf
-          dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
-          dredge${{ matrix.config.ext }}
+      - name: Strip binary (Unix only)
+        if: runner.os != 'Windows'
+        run: strip ${{ matrix.artifact_dir }}/${{ matrix.artifact }}
 
-      - name: Upload release assets
-        uses: shogo82148/actions-upload-release-asset@v1.10.1
+      - name: Ad-hoc sign binary (macOS only)
+        if: runner.os == 'macOS'
+        run: codesign --sign - --force --preserve-metadata=entitlements,requirements,flags,runtime ${{ matrix.artifact_dir }}/${{ matrix.artifact }}
+
+      - name: Package binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: tar -czf "${{ matrix.upload_name }}" -C "${{ matrix.artifact_dir }}" "${{ matrix.artifact }}"
+
+      - name: Copy binary (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: cp "${{ matrix.artifact_dir }}/${{ matrix.artifact }}" "${{ matrix.upload_name }}"
+
+      - name: Upload to GitHub release
+        run: gh release upload "${{ github.ref_name }}" "${{ matrix.upload_name }}" --clobber
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_name: dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
-          asset_path: dredge-${{ github.ref_name }}-${{ matrix.config.platform }}.${{ matrix.config.arch }}.tar.gz
-          asset_content_type: application/gzip
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

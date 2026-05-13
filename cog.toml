@@ -1,0 +1,32 @@
+# Cocogitto configuration
+# https://docs.cocogitto.io/config/
+
+ignore_merge_commits = true
+tag_prefix = "v"
+
+# Update Cargo.toml version before committing the bump.
+# The .bak suffix is needed for macOS compatibility with sed -i.
+pre_bump_hooks = [
+    "sed -i.bak 's/^version = \"[^\"]*\"/version = \"{{version}}\"/' Cargo.toml && rm -f Cargo.toml.bak",
+]
+
+[changelog]
+path = "CHANGELOG.md"
+template = "remote"
+remote = "github.com"
+repository = "dredge"
+owner = "anthonyoteri"
+authors = [
+    { username = "anthonyoteri", signature = "Anthony Oteri" },
+]
+
+[commit_types]
+feat     = { changelog_title = "Features" }
+fix      = { changelog_title = "Bug Fixes" }
+perf     = { changelog_title = "Performance" }
+refactor = { changelog_title = "Refactoring" }
+docs     = { changelog_title = "Documentation" }
+test     = { changelog_title = "Tests" }
+chore    = { changelog_title = "Miscellaneous" }
+ci       = { changelog_title = "CI", omit_from_changelog = true }
+style    = { changelog_title = "Style", omit_from_changelog = true }
