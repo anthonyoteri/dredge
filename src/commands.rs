@@ -16,78 +16,164 @@ use url::Url;
 use crate::api;
 use crate::error::ApiError;
 
-/// Handler for the `Catalog` endpoint
+/// Deserialized body of a `/v2/_catalog` response page.
+#[derive(Deserialize)]
+struct CatalogResponse {
+    repositories: Vec<String>,
+}
+
+/// Deserialized body of a `/v2/<name>/tags/list` response page.
+#[derive(Deserialize)]
+struct TagsResponse {
+    tags: Vec<String>,
+}
+
+/// A single filesystem layer entry within a V1 image manifest.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FsLayer {
+    blob_sum: String,
+}
+
+/// Deserialized body of a `/v2/<image>/manifests/<tag>` response, augmented
+/// with the `digest` and `etag` values extracted from response headers.
+#[derive(Debug, Serialize, Deserialize)]
+struct ManifestResponse {
+    name: String,
+    tag: String,
+    architecture: String,
+
+    #[serde(rename = "fsLayers")]
+    fslayers: Vec<FsLayer>,
+
+    /// Content digest from the `docker-content-digest` response header.
+    #[serde(skip_deserializing)]
+    digest: String,
+
+    /// `ETag` value from the response header (quotes stripped), or the digest
+    /// when the `ETag` header is absent.
+    #[serde(skip_deserializing)]
+    etag: String,
+}
+
+/// Fetch all repository names from the registry catalog and write them to `buf`.
 ///
-/// Fetch the list of repository names from the Docker Registry API, and
-/// simply print the resulting names to stdout.
+/// Queries `/v2/_catalog` via [`api::fetch_paginated`], collects all pages,
+/// and writes one repository name per line to the provided writer.
 ///
-/// # Errors:
+/// # Arguments
 ///
-/// Returns an `ApiError` if there is a problem fetching or parsing the
-/// responses from the Docker Registry API.  
+/// * `buf` — Output sink (typically stdout or a test buffer).
+/// * `registry_url` — Base URL of the Docker Registry.
+///
+/// # Errors
+///
+/// * [`ApiError::HttpError`] — the HTTP client could not be constructed, or a
+///   request to the registry failed at the transport layer, or a response body
+///   could not be decoded as JSON.
+/// * [`ApiError::UrlParseError`] — the catalog URL could not be constructed.
+/// * [`ApiError::ResponseHeaderParseError`] — a response header contains
+///   non-UTF-8 bytes.
+/// * [`ApiError::UnsupportedVersion`] — the registry version header has an
+///   unexpected value.
+/// * [`ApiError::UnexpectedResponse`] — a required response header is absent.
+/// * [`ApiError::AuthorizationFailed`] — the registry requires authentication.
+/// * [`ApiError::NotFound`] — the catalog endpoint does not exist.
+/// * [`ApiError::MethodNotAllowed`] — the registry rejected the request method.
+/// * [`ApiError::IOError`] — writing a repository name to `buf` failed.
 pub async fn catalog_handler(buf: &mut dyn Write, registry_url: &Url) -> Result<(), ApiError> {
-    #[derive(Deserialize)]
-    struct Response {
-        repositories: Vec<String>,
-    }
-
     log::trace!("catalog_handler(registry_url: {registry_url:?})");
-    let path = "v2/_catalog";
 
-    let responses: Vec<Response> = api::fetch_paginated(registry_url, path).await?;
-    let repository_list: Vec<&str> = responses
-        .iter()
-        .flat_map(|r| r.repositories.iter().map(String::as_str))
-        .collect();
+    let client = api::build_client()?;
+    let responses: Vec<CatalogResponse> =
+        api::fetch_paginated(&client, registry_url, "v2/_catalog").await?;
 
-    for repository in repository_list {
-        writeln!(buf, "{repository}")?;
+    for repo in responses.iter().flat_map(|r| r.repositories.iter()) {
+        writeln!(buf, "{repo}")?;
     }
 
     Ok(())
 }
 
-/// Handler for the `Tags` endpoint
+/// Fetch all tags for an image from the registry and write them to `buf`.
 ///
-/// Fetch the list of tags names for a given image from the Docker Registry API, and
-/// simply print the resulting names to stdout.
+/// Queries `/v2/<name>/tags/list` via [`api::fetch_paginated`], collects all
+/// pages, and writes one tag name per line to the provided writer.
 ///
-/// # Errors:
+/// # Arguments
 ///
-/// Returns an `ApiError` if there is a problem fetching or parsing the
-/// responses from the Docker Registry API.  
+/// * `buf` — Output sink (typically stdout or a test buffer).
+/// * `registry_url` — Base URL of the Docker Registry.
+/// * `name` — The repository name whose tags should be listed
+///   (e.g. `"myorg/backend"`).
+///
+/// # Errors
+///
+/// * [`ApiError::HttpError`] — the HTTP client could not be constructed, or a
+///   request to the registry failed at the transport layer, or a response body
+///   could not be decoded as JSON.
+/// * [`ApiError::UrlParseError`] — the tags URL could not be constructed.
+/// * [`ApiError::ResponseHeaderParseError`] — a response header contains
+///   non-UTF-8 bytes.
+/// * [`ApiError::UnsupportedVersion`] — the registry version header has an
+///   unexpected value.
+/// * [`ApiError::UnexpectedResponse`] — a required response header is absent.
+/// * [`ApiError::AuthorizationFailed`] — the registry requires authentication.
+/// * [`ApiError::NotFound`] — the image does not exist in the registry.
+/// * [`ApiError::MethodNotAllowed`] — the registry rejected the request method.
+/// * [`ApiError::IOError`] — writing a tag name to `buf` failed.
 pub async fn tags_handler(
     buf: &mut dyn Write,
     registry_url: &Url,
     name: &str,
 ) -> Result<(), ApiError> {
-    #[derive(Deserialize)]
-    struct Response {
-        tags: Vec<String>,
-    }
-
     log::trace!("tags_handler(registry_url: {registry_url:?}, name: {name})");
-    let path = format!("/v2/{name}/tags/list");
 
-    let responses: Vec<Response> = api::fetch_paginated(registry_url, &path).await?;
-    let tag_list: Vec<&str> = responses
-        .iter()
-        .flat_map(|r| r.tags.iter().map(String::as_str))
-        .collect();
+    let client = api::build_client()?;
+    let responses: Vec<TagsResponse> =
+        api::fetch_paginated(&client, registry_url, &format!("/v2/{name}/tags/list")).await?;
 
-    for tag in tag_list {
+    for tag in responses.iter().flat_map(|r| r.tags.iter()) {
         writeln!(buf, "{tag}")?;
     }
 
     Ok(())
 }
 
-/// Handler function for showing manifest details
+/// Fetch and display the manifest for a tagged image.
 ///
-/// # Errors:
+/// Queries `/v2/<image>/manifests/<tag>`, extracts the
+/// `docker-content-digest` and `etag` response headers, deserializes the
+/// manifest JSON body, and serializes the result as YAML to `buf`.
 ///
-/// Returns an `ApiError` if there is a problem fetching the manifest or if there
-/// is a problem parsing the response from the Docker Registry API.
+/// The output includes the image name, tag, target architecture, filesystem
+/// layer digests, content digest, and `ETag`.
+///
+/// # Arguments
+///
+/// * `buf` — Output sink (typically stdout or a test buffer).
+/// * `registry_url` — Base URL of the Docker Registry.
+/// * `image` — The repository name (e.g. `"myorg/backend"`).
+/// * `tag` — The tag to inspect (e.g. `"v2.0.0"`).  Pass `"latest"` when
+///   no explicit tag was provided by the caller.
+///
+/// # Errors
+///
+/// * [`ApiError::HttpError`] — the HTTP client could not be constructed, or the
+///   request failed at the transport layer, or the response body could not be
+///   decoded as JSON.
+/// * [`ApiError::UrlParseError`] — the manifest URL could not be constructed.
+/// * [`ApiError::ResponseHeaderParseError`] — a response header contains
+///   non-UTF-8 bytes.
+/// * [`ApiError::UnexpectedResponse`] — the `docker-content-digest` header is
+///   absent, or a required version header is missing.
+/// * [`ApiError::UnsupportedVersion`] — the registry version header has an
+///   unexpected value.
+/// * [`ApiError::AuthorizationFailed`] — the registry requires authentication.
+/// * [`ApiError::NotFound`] — the image or tag does not exist in the registry.
+/// * [`ApiError::MethodNotAllowed`] — the registry rejected the request method.
+/// * [`ApiError::SerializerError`] — the manifest could not be serialized to YAML.
+/// * [`ApiError::IOError`] — writing the YAML output to `buf` failed.
 #[allow(clippy::similar_names)]
 pub async fn show_handler(
     buf: &mut dyn Write,
@@ -95,71 +181,81 @@ pub async fn show_handler(
     image: &str,
     tag: &str,
 ) -> Result<(), ApiError> {
-    #[derive(Debug, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct FsLayer {
-        blob_sum: String,
-    }
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Response {
-        name: String,
-        tag: String,
-        architecture: String,
-
-        #[serde(rename = "fsLayers")]
-        fslayers: Vec<FsLayer>,
-
-        #[serde(skip_deserializing)]
-        digest: String,
-
-        #[serde(skip_deserializing)]
-        etag: String,
-    }
     log::trace!("show_handler(registry_url: {registry_url:?}, image: {image}, tag: {tag})");
     let path = format!("/v2/{image}/manifests/{tag}");
     let url = registry_url.join(&path)?;
 
-    let resp = reqwest::get(url).await?;
+    let client = api::build_client()?;
+    let resp = client.get(url).send().await?;
     api::parse_response_status(&resp)?;
 
     let headers = resp.headers();
-    let digest: String = String::from(
-        headers
-            .get("docker-content-digest")
-            .ok_or(ApiError::UnexpectedResponse(String::from(
-                "Missing docker-content-digest header",
-            )))?
-            .to_str()?,
-    );
+    let digest = headers
+        .get("docker-content-digest")
+        .ok_or_else(|| {
+            ApiError::UnexpectedResponse("Missing docker-content-digest header".into())
+        })?
+        .to_str()?
+        .to_owned();
 
-    let etag: String = String::from(
-        headers
-            .get("etag")
-            .ok_or(ApiError::UnexpectedResponse(String::from(
-                "Missing etag header",
-            )))?
-            .to_str()?
-            .strip_prefix("'\"")
-            .and_then(|s| s.strip_suffix("\"'"))
-            .unwrap_or(&digest),
-    );
+    // Docker Registry API ETags are quoted strings per RFC 7232, e.g.
+    // `"sha256:abc123"`.  Strip surrounding double-quotes when present; fall
+    // back to the digest when the header is absent.
+    let etag = match headers.get("etag") {
+        Some(v) => {
+            let raw = v.to_str()?;
+            raw.strip_prefix('"')
+                .and_then(|s| s.strip_suffix('"'))
+                .unwrap_or(raw)
+                .to_owned()
+        }
+        None => digest.clone(),
+    };
 
-    let mut body: Response = resp.json().await?;
+    let mut body: ManifestResponse = resp.json().await?;
     body.digest = digest;
     body.etag = etag;
 
-    serde_yaml::to_writer(buf, &body)?;
+    serde_yml::to_writer(buf, &body)?;
     Ok(())
 }
 
-/// Handler function for deleting a manifest for a given tagged image.
+/// Delete the manifest for a tagged image from the registry.
 ///
-/// # Errors:
+/// Resolves `tag` to its content digest by sending a `HEAD` request to
+/// `/v2/<image>/manifests/<tag>`, then deletes the manifest by digest via
+/// `DELETE /v2/<image>/manifests/<digest>`.
 ///
-/// Returns and `ApiError` if there is a problem converting the given tag to a
-/// manifest digest, or if there is a problem deleting the manifest from the
-/// Docker Registry API.
+/// The registry must have storage deletion enabled.  Set the environment
+/// variable `REGISTRY_STORAGE_DELETE_ENABLED=true` on the registry container.
+/// If deletion is not enabled the registry returns `405 Method Not Allowed`
+/// and this function returns [`ApiError::MethodNotAllowed`].
+///
+/// Only the manifest is removed.  Unreferenced layer blobs remain on disk
+/// until the registry garbage collector is run separately.
+///
+/// # Arguments
+///
+/// * `_buf` — Unused output sink (reserved for future use).
+/// * `registry_url` — Base URL of the Docker Registry.
+/// * `image` — The repository name (e.g. `"myorg/backend"`).
+/// * `tag` — The tag to delete (e.g. `"v1.0.0"`).
+///
+/// # Errors
+///
+/// * [`ApiError::HttpError`] — the HTTP client could not be constructed, or a
+///   request failed at the transport layer.
+/// * [`ApiError::UrlParseError`] — a manifest URL could not be constructed.
+/// * [`ApiError::ResponseHeaderParseError`] — a response header contains
+///   non-UTF-8 bytes.
+/// * [`ApiError::UnexpectedResponse`] — the `docker-content-digest` header is
+///   absent from the `HEAD` response, or a required version header is missing.
+/// * [`ApiError::UnsupportedVersion`] — the registry version header has an
+///   unexpected value.
+/// * [`ApiError::AuthorizationFailed`] — the registry requires authentication.
+/// * [`ApiError::NotFound`] — the image or tag does not exist in the registry.
+/// * [`ApiError::MethodNotAllowed`] — the registry does not permit deletion;
+///   ensure `REGISTRY_STORAGE_DELETE_ENABLED=true` is set on the registry.
 #[allow(clippy::unused_async)]
 pub async fn delete_handler(
     _buf: &mut dyn Write,
@@ -169,7 +265,7 @@ pub async fn delete_handler(
 ) -> Result<(), ApiError> {
     log::trace!("delete_handler(registry_url: {registry_url:?}, image: {image}, tag: {tag})");
 
-    let client = reqwest::Client::new();
+    let client = api::build_client()?;
     let url = registry_url.join(&format!("/v2/{image}/manifests/{tag}"))?;
     let digest = api::get_digest(&client, &url).await?;
 
@@ -181,21 +277,39 @@ pub async fn delete_handler(
     Ok(())
 }
 
-// Path to the Docker Registry APIs "api version check" endpoint.
-
-/// Handler for the API Version Check.
+/// Verify that the registry endpoint implements Docker Distribution API v2.
 ///
-/// # Errors:
+/// Sends a `GET` request to `/v2` and validates the response with
+/// [`api::parse_response_status`].  On success writes `"Ok\n"` to `buf`.
 ///
-/// Returns an `ApiError` if there is a problem communicating with the
-/// endpoint or if the required version is not supported.
+/// # Arguments
+///
+/// * `buf` — Output sink (typically stdout or a test buffer).
+/// * `registry_url` — Base URL of the Docker Registry.
+///
+/// # Errors
+///
+/// * [`ApiError::HttpError`] — the HTTP client could not be constructed, or the
+///   request failed at the transport layer.
+/// * [`ApiError::UrlParseError`] — the `/v2` URL could not be constructed.
+/// * [`ApiError::ResponseHeaderParseError`] — the version header contains
+///   non-UTF-8 bytes.
+/// * [`ApiError::UnexpectedResponse`] — the `Docker-Distribution-API-Version`
+///   header is absent from the response.
+/// * [`ApiError::UnsupportedVersion`] — the version header has a value other
+///   than `"registry/2.0"`.
+/// * [`ApiError::AuthorizationFailed`] — the registry requires authentication.
+/// * [`ApiError::NotFound`] — the `/v2` endpoint does not exist.
+/// * [`ApiError::MethodNotAllowed`] — the registry rejected the request method.
+/// * [`ApiError::IOError`] — writing `"Ok\n"` to `buf` failed.
 pub async fn check_handler(buf: &mut dyn Write, registry_url: &Url) -> Result<(), ApiError> {
     log::trace!("check_handler(registry_url: {registry_url:?})");
 
     let path = "/v2";
     let url = registry_url.join(path)?;
 
-    let resp = reqwest::get(url).await?;
+    let client = api::build_client()?;
+    let resp = client.get(url).send().await?;
     api::parse_response_status(&resp)?;
     writeln!(buf, "Ok")?;
     Ok(())
@@ -260,7 +374,7 @@ mod tests {
             .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_header(
                 http::header::LINK.as_str(),
-                &format!(r#"<{path2}>; rel=next"#),
+                &format!(r"<{path2}>; rel=next"),
             )
             .with_body(r#"{"repositories": ["image1", "image2"]}"#)
             .create();
@@ -310,9 +424,9 @@ mod tests {
         mock_response.assert();
     }
 
-    /// Validate the pagination of the catalog handler.
+    /// Validate the pagination of the tags handler.
     ///
-    /// This test spins up a mock server, and makes a request to the catalog
+    /// This test spins up a mock server, and makes a request to the tags
     /// endpoint.  The response includes a pagination link, which the handler
     /// should follow, resulting in the combined list.  It checks that the
     /// handler both called the request the expected number of times, and did
@@ -332,7 +446,7 @@ mod tests {
             .with_header("Docker-Distribution-API-Version", "registry/2.0")
             .with_header(
                 http::header::LINK.as_str(),
-                &format!(r#"<{path2}>; rel=next"#),
+                &format!(r"<{path2}>; rel=next"),
             )
             .with_body(r#"{"tags": ["tag1", "tag2"]}"#)
             .create();
@@ -381,7 +495,7 @@ mod tests {
         mock_response.assert();
     }
 
-    /// Validate the the check handler on invalid API version
+    /// Validate the check handler when the API version header is missing.
     ///
     /// This validates that if the "Docker-Distribution-API-Version" header
     /// is missing in the response, the appropriate error is returned.
@@ -413,7 +527,7 @@ mod tests {
         Ok(())
     }
 
-    /// Validate the the check handler on invalid API version
+    /// Validate the check handler when the API version header has an unexpected value.
     ///
     /// This validates that if the "Docker-Distribution-API-Version" header
     /// is present in the response but contains an unexpected value, the
