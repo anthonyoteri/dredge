@@ -192,9 +192,7 @@ pub async fn show_handler(
     let headers = resp.headers();
     let digest = headers
         .get("docker-content-digest")
-        .ok_or_else(|| {
-            ApiError::UnexpectedResponse("Missing docker-content-digest header".into())
-        })?
+        .ok_or_else(|| ApiError::UnexpectedResponse("Missing docker-content-digest header".into()))?
         .to_str()?
         .to_owned();
 
@@ -216,7 +214,7 @@ pub async fn show_handler(
     body.digest = digest;
     body.etag = etag;
 
-    serde_yml::to_writer(buf, &body)?;
+    serde_norway::to_writer(buf, &body)?;
     Ok(())
 }
 

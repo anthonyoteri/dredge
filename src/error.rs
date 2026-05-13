@@ -77,7 +77,7 @@ pub enum ApiError {
 
     /// The manifest response body could not be serialized to YAML for output.
     #[error(transparent)]
-    SerializerError(#[from] serde_yml::Error),
+    SerializerError(#[from] serde_norway::Error),
 
     /// The registry returned `405 Method Not Allowed`, typically because
     /// storage deletion has not been enabled on the registry.
@@ -100,7 +100,10 @@ mod tests {
     fn test_dredge_error_from_api_error_not_found() {
         let api_err = ApiError::NotFound;
         let dredge_err = DredgeError::from(api_err);
-        assert!(matches!(dredge_err, DredgeError::ApiError(ApiError::NotFound)));
+        assert!(matches!(
+            dredge_err,
+            DredgeError::ApiError(ApiError::NotFound)
+        ));
     }
 
     /// Test that `DredgeError::from(ApiError::AuthorizationFailed)` works.

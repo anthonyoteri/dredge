@@ -33,11 +33,10 @@ indoc = "2.0"
 log = "0.4"
 reqwest = { version = "0.12", features = ["json", "gzip", "multipart", "native-tls-vendored"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_yml = "0.0.12"
 thiserror = "2.0"
-toml = "1.0"
 url = { version = "2.5", features = ["serde"] }
 tokio = { version = "1.52", features = ["macros"] }
+serde_norway = "0.9.42"
 
 [dev-dependencies]
 mockito = "1.7"

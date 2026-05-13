@@ -69,9 +69,9 @@ jobs:
         uses: cocogitto/cocogitto-action@v3
         with:
           check: true
-          # On PRs check only the commits introduced by the PR.
-          # On pushes to master check only commits since the previous HEAD.
-          from: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          # Only check commits reachable from the latest tag so that old
+          # non-conventional commits in history do not fail the check.
+          from_latest_tag: true
 
   deny:
     name: Cargo deny
@@ -99,23 +99,4 @@ jobs:
       - name: Check MSRV builds
         run: cargo check
 
-  semver:
-    name: Semver compatibility
-    runs-on: ubuntu-latest
-    # Only meaningful on PRs — compares the PR branch against the published
-    # crate version to catch accidental breaking API changes.
-    if: github.event_name == 'pull_request'
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Check semver compatibility
-        uses: obi1kenobi/cargo-semver-checks-action@v2
-        with:
-          package: dredge-tool

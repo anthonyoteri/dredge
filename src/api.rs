@@ -553,7 +553,11 @@ mod tests {
         let registry_url = Url::parse(&server.url()).expect("Failed to parse registry URL");
         server
             .mock("GET", path)
-            .with_status(http::status::StatusCode::INTERNAL_SERVER_ERROR.as_u16().into())
+            .with_status(
+                http::status::StatusCode::INTERNAL_SERVER_ERROR
+                    .as_u16()
+                    .into(),
+            )
             .create();
 
         let url = registry_url.join(path).expect("Failed to join URL");
