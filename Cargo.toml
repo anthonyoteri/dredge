@@ -1,12 +1,12 @@
 [package]
 name = "dredge-tool"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2021"
 authors = ["Anthony Oteri"]
-description = "A Command Line tool for interracting with the Docker Registry API"
+description = "A command line tool for interacting with the Docker Registry API"
 readme = "README.md"
 repository = "https://github.com/anthonyoteri/dredge"
-rust-version = "1.72"
+rust-version = "1.80"
 license = "MIT OR Apache-2.0"
 keywords = [
     "docker",
@@ -26,21 +26,19 @@ name = "dredge"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.4.3", features = ["derive", "env", "wrap_help"] }
-simple_logger = { version = "5.0.0", features = ["timestamps", "colors", "stderr"] }
-http = "1.0.0"
-indoc = "2.0.4"
-log = "0.4.20"
-reqwest = { version = "0.12.3", features = ["json", "gzip", "multipart", "native-tls-vendored"] }
-serde = { version = "1.0.188", features = ["derive"] }
-serde_toml = "0.0.1"
-serde_yaml = "0.9.25"
-thiserror = "1.0.48"
-toml = "0.8.0"
-url = { version = "2.4.1", features = ["serde"] }
-xdg = "2.5.2"
-tokio = { version = "1.32.0", features = ["macros"] }
+clap = { version = "4.6", features = ["derive", "env", "wrap_help"] }
+simple_logger = { version = "5.2", features = ["timestamps", "colors", "stderr"] }
+http = "1.4"
+indoc = "2.0"
+log = "0.4"
+reqwest = { version = "0.12", features = ["json", "gzip", "multipart", "native-tls-vendored"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yml = "0.0.12"
+thiserror = "2.0"
+toml = "1.0"
+url = { version = "2.5", features = ["serde"] }
+tokio = { version = "1.52", features = ["macros"] }
 
 [dev-dependencies]
-mockito = "1.2.0"
-env_logger = "0.11.3"
+mockito = "1.7"
+env_logger = "0.11"
